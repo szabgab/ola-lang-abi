@@ -3,6 +3,8 @@ use anyhow::{anyhow, Result};
 use crate::types::Type;
 
 type AddressValue = [usize; 4];
+
+
 type HashValue = [usize; 4];
 
 /// ABI decoded value.
@@ -48,6 +50,7 @@ impl Value {
 
     /// Encodes values into bytes.
     pub fn encode(values: &[Self]) -> Vec<usize> {
+
         let mut buf = vec![];
         for value in values {
             match value {
@@ -273,13 +276,12 @@ impl Value {
                 (0..array_len)
                     .try_fold((vec![], 0), |(mut values, total_consumed), _| {
                         let (value, consumed) = Self::decode(bs, ty, at, total_consumed)?;
-
                         values.push(value);
 
                         Ok((values, total_consumed + consumed))
                     })
                     .map(|(values, total_consumed)| {
-                        (Value::Array(values, *ty.clone()), total_consumed)
+                        (Value::Array(values, *ty.clone()), total_consumed + 1)
                     })
             }
 
@@ -300,316 +302,292 @@ impl Value {
 
 #[cfg(test)]
 mod test {
-    // use super::*;
 
-    // use pretty_assertions::assert_eq;
-    // use rand::Rng;
+    use std::vec;
 
-    // #[test]
-    // fn decode_uint() {
-    //     let uint: U256 = U256::exp10(18) + 1;
+    use super::*;
 
-    //     let mut bs = [0u8; 32];
-    //     uint.to_big_endian(&mut bs[..]);
+    use pretty_assertions::assert_eq;
 
-    //     let v =
-    //         Value::decode_from_slice(&bs, &[Type::Uint(256)]).expect("decode_from_slice failed");
 
-    //     assert_eq!(v, vec![Value::Uint(uint, 256)]);
-    // }
+    #[test]
+    fn decode_uint() {
 
-    // #[test]
-    // fn decode_int() {
-    //     let uint: U256 = U256::exp10(18) + 1;
+        let bs = vec![100, 200, 300];
 
-    //     let mut bs = [0u8; 32];
-    //     uint.to_big_endian(&mut bs[..]);
+        let v =
+            Value::decode_from_slice(&bs, &[Type::U32, Type::U32, Type::U32]).expect("decode_from_slice failed");
 
-    //     let v = Value::decode_from_slice(&bs, &[Type::Int(256)]).expect("decode_from_slice failed");
+        assert_eq!(v, vec![Value::U32(100), Value::U32(200), Value::U32(300)]);
+    }
 
-    //     assert_eq!(v, vec![Value::Int(uint, 256)]);
-    // }
+    #[test]
+    fn decode_field() {
 
-    // #[test]
-    // fn decode_address() {
-    //     let addr = H160::random();
+        let bs = vec![100, 200, 300];
 
-    //     let mut bs = [0u8; 32];
-    //     bs[12..32].copy_from_slice(addr.as_bytes());
+        let v =
+            Value::decode_from_slice(&bs, &[Type::Field, Type::Field, Type::Field]).expect("decode_from_slice failed");
 
-    //     let v = Value::decode_from_slice(&bs, &[Type::Address]).expect("decode_from_slice failed");
+        assert_eq!(v, vec![Value::Field(100), Value::Field(200), Value::Field(300)]);
+    }
 
-    //     assert_eq!(v, vec![Value::Address(addr)]);
-    // }
+    
+    #[test]
+    fn decode_address() {
 
-    // #[test]
-    // fn decode_bool() {
-    //     let mut bs = [0u8; 32];
-    //     bs[31] = 1;
+        let bs = [1, 2, 3, 4];
 
-    //     let v = Value::decode_from_slice(&bs, &[Type::Bool]).expect("decode_from_slice failed");
+        let v = Value::decode_from_slice(&bs, &[Type::Address]).expect("decode_from_slice failed");
 
-    //     assert_eq!(v, vec![Value::Bool(true)]);
-    // }
+        assert_eq!(v, vec![Value::Address([1, 2, 3, 4])]);
+    }
 
-    // #[test]
-    // fn decode_fixed_bytes() {
-    //     let mut bs = [0u8; 32];
-    //     for (i, b) in bs.iter_mut().enumerate().take(16).skip(1) {
-    //         *b = i as u8;
-    //     }
+    #[test]
+    fn decode_hash() {
 
-    //     let v = Value::decode_from_slice(&bs, &[Type::FixedBytes(16)])
-    //         .expect("decode_from_slice failed");
+        let bs = [1, 2, 3, 4];
 
-    //     assert_eq!(v, vec![Value::FixedBytes(bs[0..16].to_vec())]);
-    // }
+        let v = Value::decode_from_slice(&bs, &[Type::Hash]).expect("decode_from_slice failed");
 
-    // #[test]
-    // fn decode_fixed_array() {
-    //     let mut bs = [0u8; 128];
+        assert_eq!(v, vec![Value::Hash([1, 2, 3, 4])]);
+    }
 
-    //     // encode some data
-    //     let uint1 = U256::from(5);
-    //     let uint2 = U256::from(6);
-    //     let uint3 = U256::from(7);
-    //     let uint4 = U256::from(8);
+    #[test]
+    fn decode_bool() {
+        let bs = [0, 1];
+        let v = Value::decode_from_slice(&bs, &[Type::Bool, Type::Bool]).expect("decode_from_slice failed");
 
-    //     uint1.to_big_endian(&mut bs[0..32]);
-    //     uint2.to_big_endian(&mut bs[32..64]);
-    //     uint3.to_big_endian(&mut bs[64..96]);
-    //     uint4.to_big_endian(&mut bs[96..128]);
+        assert_eq!(v, vec![Value::Bool(false), Value::Bool(true)]);
+    }
 
-    //     let uint_arr2 = Type::FixedArray(Box::new(Type::Uint(256)), 2);
+    #[test]
+    fn decode_fixed_array() {
 
-    //     let v = Value::decode_from_slice(&bs, &[Type::FixedArray(Box::new(uint_arr2.clone()), 2)])
-    //         .expect("decode_from_slice failed");
+        // encode some data
+        let uint1 = 5;
+        let uint2 = 6;
+        let uint3 = 7;
+        let uint4 = 8;
 
-    //     assert_eq!(
-    //         v,
-    //         vec![Value::FixedArray(
-    //             vec![
-    //                 Value::FixedArray(
-    //                     vec![Value::Uint(uint1, 256), Value::Uint(uint2, 256)],
-    //                     Type::Uint(256)
-    //                 ),
-    //                 Value::FixedArray(
-    //                     vec![Value::Uint(uint3, 256), Value::Uint(uint4, 256)],
-    //                     Type::Uint(256)
-    //                 )
-    //             ],
-    //             uint_arr2
-    //         )]
-    //     );
-    // }
+        let bs = vec![uint1, uint2, uint3, uint4];
 
-    // #[test]
-    // fn decode_string() {
-    //     let mut rng = rand::thread_rng();
+        let uint_arr2 = Type::FixedArray(Box::new(Type::U32), 2);
 
-    //     let mut bs = [0u8; 128];
+        let v = Value::decode_from_slice(&bs, &[Type::FixedArray(Box::new(uint_arr2.clone()), 2)])
+            .expect("decode_from_slice failed");
 
-    //     bs[31] = 0x20; // big-endian string offset
+        assert_eq!(
+            v,
+            vec![Value::FixedArray(
+                vec![
+                    Value::FixedArray(
+                        vec![Value::U32(uint1), Value::U32(uint2)],
+                        Type::U32
+                    ),
+                    Value::FixedArray(
+                        vec![Value::U32(uint3), Value::U32(uint4)],
+                        Type::U32
+                    )
+                ],
+                uint_arr2
+            )]
+        );
+    }
 
-    //     let str_len: usize = rng.gen_range(0..64);
-    //     bs[63] = str_len as u8; // big-endian string size
+    #[test]
+    fn decode_string() {
 
-    //     let chars = "abcdef0123456789".as_bytes();
+        let source =  "olavm".as_bytes().into_iter().map(|x| *x as usize).collect::<Vec<usize>>();
+        let mut bs = vec![source.len() as usize];
+        bs.extend_from_slice(source.as_slice());
+        let v = Value::decode_from_slice(&bs, &[Type::String]).expect("decode_from_slice failed");
 
-    //     for i in 0..str_len {
-    //         bs[64 + i] = chars[rng.gen_range(0..chars.len())];
-    //     }
+        let expected_str = "olavm".to_string();
+        assert_eq!(v, vec![Value::String(expected_str)]);
+    }
 
-    //     let v = Value::decode_from_slice(&bs, &[Type::String]).expect("decode_from_slice failed");
+    #[test]
+    fn decode_fields() {
 
-    //     let expected_str = String::from_utf8(bs[64..(64 + str_len)].to_vec()).unwrap();
-    //     assert_eq!(v, vec![Value::String(expected_str)]);
-    // }
+        let source =  "hello,world".as_bytes().into_iter().map(|x| *x as usize).collect::<Vec<usize>>();
+        let mut bs = vec![source.len() as usize];
+        bs.extend_from_slice(source.as_slice());
+        let v = Value::decode_from_slice(&bs, &[Type::Fields]).expect("decode_from_slice failed");
+        let expected_fields = vec![104, 101, 108, 108, 111, 44, 119, 111, 114, 108, 100];
+        assert_eq!(v, vec![Value::Fields(expected_fields)]);
+    }
 
-    // #[test]
-    // fn decode_bytes() {
-    //     let mut rng = rand::thread_rng();
+    #[test]
+    fn decode_array() {
 
-    //     let mut bs = [0u8; 128];
-    //     bs[31] = 0x20; // big-endian bytes offset
+        // encode some data
+        let uint1 = 5;
+        let uint2 = 6;
+        let uint3 = 7;
+        let uint4 = 8;
+        let uint5 = 9;
+        let uint6 = 10;
+        let bs = vec![2, uint1, uint2, uint3, uint4, uint5, uint6];
 
-    //     let bytes_len: usize = rng.gen_range(0..64);
-    //     bs[63] = bytes_len as u8; // big-endian bytes length
+        let uint_arr2 = Type::FixedArray(Box::new(Type::U32), 3);
 
-    //     for i in 0..bytes_len {
-    //         bs[64 + i] = rng.gen();
-    //     }
+        let v = Value::decode_from_slice(&bs, &[Type::Array(Box::new(uint_arr2.clone()))])
+            .expect("decode_from_slice failed");
 
-    //     let v = Value::decode_from_slice(&bs, &[Type::Bytes]).expect("decode_from_slice failed");
+        assert_eq!(
+            v,
+            vec![Value::Array(
+                vec![
+                    Value::FixedArray(
+                        vec![Value::U32(uint1), Value::U32(uint2), Value::U32(uint3)],
+                        Type::U32
+                    ),
+                    Value::FixedArray(
+                        vec![Value::U32(uint4), Value::U32(uint5), Value::U32(uint6)],
+                        Type::U32
+                    )
+                ],
+                uint_arr2
+            )]
+        );
+    }
 
-    //     assert_eq!(v, vec![Value::Bytes(bs[64..(64 + bytes_len)].to_vec())]);
-    // }
 
-    // #[test]
-    // fn decode_array() {
-    //     let mut bs = [0u8; 192];
-    //     bs[31] = 0x20; // big-endian array offset
-    //     bs[63] = 2; // big-endian array length
+    #[test]
+    fn decode_array2() {
 
-    //     // encode some data
-    //     let uint1 = U256::from(5);
-    //     let uint2 = U256::from(6);
-    //     let uint3 = U256::from(7);
-    //     let uint4 = U256::from(8);
+        // [[1, 2, 3], [8, 9]]
+        let bs = vec![3, 1, 2, 3, 2, 8, 9];
 
-    //     uint1.to_big_endian(&mut bs[64..96]);
-    //     uint2.to_big_endian(&mut bs[96..128]);
-    //     uint3.to_big_endian(&mut bs[128..160]);
-    //     uint4.to_big_endian(&mut bs[160..192]);
+        let uint_arr2 = Type::FixedArray(Box::new(Type::Array(Box::new(Type::U32))), 2);
 
-    //     let uint_arr2 = Type::FixedArray(Box::new(Type::Uint(256)), 2);
+        let v = Value::decode_from_slice(&bs, &[uint_arr2])
+            .expect("decode_from_slice failed");
 
-    //     let v = Value::decode_from_slice(&bs, &[Type::Array(Box::new(uint_arr2.clone()))])
-    //         .expect("decode_from_slice failed");
 
-    //     assert_eq!(
-    //         v,
-    //         vec![Value::Array(
-    //             vec![
-    //                 Value::FixedArray(
-    //                     vec![Value::Uint(uint1, 256), Value::Uint(uint2, 256)],
-    //                     Type::Uint(256)
-    //                 ),
-    //                 Value::FixedArray(
-    //                     vec![Value::Uint(uint3, 256), Value::Uint(uint4, 256)],
-    //                     Type::Uint(256)
-    //                 )
-    //             ],
-    //             uint_arr2
-    //         )]
-    //     );
-    // }
+        assert_eq!(
+            v,
+            vec![
+                Value::FixedArray(
+                    vec![
+                        Value::Array(
+                            vec![
+                                Value::U32(1),
+                                Value::U32(2),
+                                Value::U32(3),
+                            ],
+                            Type::U32
+                        ),
+                        Value::Array(vec![Value::U32(8), Value::U32(9)], Type::U32),
+                    ],
+                    Type::Array(Box::new(Type::U32))
+                ),
+            ],
+        );
+    }
 
-    // #[test]
-    // fn decode_fixed_tuple() {
-    //     let mut bs = [0u8; 96];
+    #[test]
+    fn decode_fixed_tuple() {
 
-    //     // encode some data
-    //     let uint1 = U256::from(5);
-    //     let uint2 = U256::from(6);
-    //     let addr = H160::random();
 
-    //     uint1.to_big_endian(&mut bs[0..32]);
-    //     uint2.to_big_endian(&mut bs[32..64]);
-    //     bs[76..96].copy_from_slice(addr.as_fixed_bytes());
+        // encode some data
+        let uint1 = 5;
+        let uint2 = 6;
+        let addr = [1, 2, 3, 4];
+        let mut bs = vec![uint1, uint2];
+        bs.extend_from_slice(&addr);
+        
+        let v = Value::decode_from_slice(
+            &bs,
+            &[Type::Tuple(vec![
+                ("a".to_string(), Type::U32),
+                ("b".to_string(), Type::U32),
+                ("c".to_string(), Type::Address),
+            ])],
+        )
+        .expect("decode_from_slice failed");
 
-    //     let v = Value::decode_from_slice(
-    //         &bs,
-    //         &[Type::Tuple(vec![
-    //             ("a".to_string(), Type::Uint(256)),
-    //             ("b".to_string(), Type::Uint(256)),
-    //             ("c".to_string(), Type::Address),
-    //         ])],
-    //     )
-    //     .expect("decode_from_slice failed");
+        assert_eq!(
+            v,
+            vec![Value::Tuple(vec![
+                ("a".to_string(), Value::U32(uint1)),
+                ("b".to_string(), Value::U32(uint2)),
+                ("c".to_string(), Value::Address(addr))
+            ])]
+        );
+    }
 
-    //     assert_eq!(
-    //         v,
-    //         vec![Value::Tuple(vec![
-    //             ("a".to_string(), Value::Uint(uint1, 256)),
-    //             ("b".to_string(), Value::Uint(uint2, 256)),
-    //             ("c".to_string(), Value::Address(addr))
-    //         ])]
-    //     );
-    // }
+    #[test]
+    fn decode_tuple() {
 
-    // #[test]
-    // fn decode_tuple() {
-    //     let mut bs = [0u8; 192];
-    //     bs[31] = 0x20; // big-endian tuple offset
+        // encode some data
+        let uint1 = 5;
+        let mut bs = vec![uint1];
+        let str = "olavm".to_string();
+        let source =  str.as_bytes().into_iter().map(|x| *x as usize).collect::<Vec<usize>>();
+        bs.resize(2, 0);
+        bs[1] = source.len() as usize;
+        bs.extend_from_slice(&source);
+        let addr = [1, 2, 3, 4];
+        bs.extend_from_slice(&addr);
 
-    //     // encode some data
-    //     let uint1 = U256::from(5);
-    //     let s = "abc".to_string();
-    //     let addr = H160::random();
+        let v = Value::decode_from_slice(
+            &bs,
+            &[Type::Tuple(vec![
+                ("a".to_string(), Type::U32),
+                ("b".to_string(), Type::String),
+                ("c".to_string(), Type::Address),
+            ])],
+        )
+        .expect("decode_from_slice failed");
 
-    //     uint1.to_big_endian(&mut bs[32..64]);
-    //     bs[95] = 0x60; // big-endian string offset
-    //     bs[108..128].copy_from_slice(addr.as_fixed_bytes());
-    //     bs[159] = 3; // big-endian string len;
-    //     bs[160..(160 + s.len())].copy_from_slice(s.as_bytes());
+        assert_eq!(
+            v,
+            vec![Value::Tuple(vec![
+                ("a".to_string(), Value::U32(uint1)),
+                ("b".to_string(), Value::String(str)),
+                ("c".to_string(), Value::Address(addr))
+            ])]
+        );
+    }
 
-    //     let v = Value::decode_from_slice(
-    //         &bs,
-    //         &[Type::Tuple(vec![
-    //             ("a".to_string(), Type::Uint(256)),
-    //             ("b".to_string(), Type::String),
-    //             ("c".to_string(), Type::Address),
-    //         ])],
-    //     )
-    //     .expect("decode_from_slice failed");
+    #[test]
+    fn decode_many() {
+        // fn f(string x, u32 y, u32[][2]  z)
+        let tys = vec![
+            Type::String,
+            Type::U32,
+            Type::FixedArray(Box::new(Type::Array(Box::new(Type::U32))), 2),
+        ];
 
-    //     assert_eq!(
-    //         v,
-    //         vec![Value::Tuple(vec![
-    //             ("a".to_string(), Value::Uint(uint1, 256)),
-    //             ("b".to_string(), Value::String(s)),
-    //             ("c".to_string(), Value::Address(addr))
-    //         ])]
-    //     );
-    // }
+        // f("olavm", 12, [[1, 2], [3]])
+        let  bs = vec![5, 111, 108, 97, 118, 109, 12, 2, 1, 2, 1, 3];
+    
+        let v = Value::decode_from_slice(&bs, &tys).expect("decode_from_slice failed");
 
-    // #[test]
-    // fn decode_many() {
-    //     // function f(string memory x, uint32 y, uint32[][2] memory z)
-    //     let tys = vec![
-    //         Type::String,
-    //         Type::Uint(32),
-    //         Type::FixedArray(Box::new(Type::Array(Box::new(Type::Uint(32)))), 2),
-    //     ];
+        assert_eq!(
+            v,
+            vec![
+                Value::String("olavm".to_string()),
+                Value::U32(12),
+                Value::FixedArray(
+                    vec![
+                        Value::Array(
+                            vec![
+                                Value::U32(1),
+                                Value::U32(2),
+                            ],
+                            Type::U32
+                        ),
+                        Value::Array(vec![Value::U32(3)], Type::U32),
+                    ],
+                    Type::Array(Box::new(Type::U32))
+                ),
+            ],
+        );
+    }
 
-    //     // f("abc", 5, [[1, 2], [3]])
-    //     let input = "0000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000036162630000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000003";
-    //     let mut bs = [0u8; 384];
-    //     hex::decode_to_slice(input, &mut bs).unwrap();
-
-    //     let v = Value::decode_from_slice(&bs, &tys).expect("decode_from_slice failed");
-
-    //     assert_eq!(
-    //         v,
-    //         vec![
-    //             Value::String("abc".to_string()),
-    //             Value::Uint(U256::from(5), 32),
-    //             Value::FixedArray(
-    //                 vec![
-    //                     Value::Array(
-    //                         vec![
-    //                             Value::Uint(U256::from(1), 32),
-    //                             Value::Uint(U256::from(2), 32),
-    //                         ],
-    //                         Type::Uint(32)
-    //                     ),
-    //                     Value::Array(vec![Value::Uint(U256::from(3), 32)], Type::Uint(32)),
-    //                 ],
-    //                 Type::Array(Box::new(Type::Uint(32)))
-    //             ),
-    //         ],
-    //     );
-    // }
-
-    // #[test]
-    // fn decode_byte_array() {
-    //     let tys = vec![Type::Uint(256), Type::Array(Box::new(Type::Bytes))];
-
-    //     let input = "0000000000000000000000000000000000000000000000000000000062262ba1000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000016000000000000000000000000000000000000000000000000000000000000000e404e45aaf000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000001f4000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000084b6a5c40000000000000000000000000000000000000000000000000bd373e0061c7e7f94000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004449404b7c00000000000000000000000000000000000000000000000bd373e0061c7e7f9400000000000000000000000016ee789b50d3d49b8f71b5314c367e3fef24d74600000000000000000000000000000000000000000000000000000000";
-    //     let mut bs = [0u8; 576];
-    //     hex::decode_to_slice(input, &mut bs).unwrap();
-
-    //     let values = Value::decode_from_slice(&bs, &tys).expect("decode_from_slice failed");
-
-    //     assert_eq!(values, vec![
-    //             Value::Uint(U256::from_dec_str("1646668705").unwrap(), 256),
-    //             Value::Array(vec![
-    //                 Value::Bytes(hex::decode("04e45aaf000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc200000000000000000000000000000000000000000000000000000000000001f4000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000084b6a5c40000000000000000000000000000000000000000000000000bd373e0061c7e7f940000000000000000000000000000000000000000000000000000000000000000").unwrap()),
-    //                 Value::Bytes(hex::decode("49404b7c00000000000000000000000000000000000000000000000bd373e0061c7e7f9400000000000000000000000016ee789b50d3d49b8f71b5314c367e3fef24d746").unwrap()),
-    //             ], Type::Bytes),
-    //         ]);
-    // }
 
     // #[test]
     // fn encode_uint() {
