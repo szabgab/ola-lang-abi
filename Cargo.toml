@@ -1,0 +1,22 @@
+[package]
+name = "ola-lang-abi"
+version = "0.1.0"
+edition = "2021"
+description = "Ola Smart Contract ABI parsing library"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+keywords = ["abi", "ola", "web3"]
+
+[dependencies]
+anyhow = { version = "1.0", default-features = false, features = ["std"] }
+ethereum-types = { version = "0.14.0", default-features = false, features = ["std"] }
+hex = { version = "0.4", default-features = false, features = ["std"] }
+nom = { version = "7.0", default-features = false, features = ["std"] }
+regex = { version = "1.5", default-features = false, features = ["std"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["std"] }
+tiny-keccak = { version = "2.0", default-features = false, features = ["keccak"] }
+
+[dev-dependencies]
+pretty_assertions = "1.0"
+rand = "0.8"
+ethereum-types = "0.14.0"
