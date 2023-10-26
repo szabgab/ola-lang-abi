@@ -41,6 +41,33 @@ impl Abi {
 
         Ok((f, decoded_params))
     }
+
+    pub fn encode_input_with_signature(&self, signature: &str, params: &[Value]) -> Result<Vec<usize>> {
+        let f = self
+            .functions
+            .iter()
+            .find(|f| f.signature() == signature)
+            .ok_or_else(|| anyhow!("ABI function not found"))?;
+
+        let mut enc_input = vec![f.method_id()];
+
+        let params = Value::encode(params);
+        enc_input.push(params.len());
+        enc_input.extend(params);
+
+        Ok(enc_input)
+    }
+
+    pub fn encode_input_values(&self, params: &[Value]) -> Result<Vec<usize>> {
+        let mut enc_input = vec![];
+
+        let params = Value::encode(params);
+        enc_input.push(params.len());
+        enc_input.extend(params);
+
+        Ok(enc_input)
+    }
+
 }
 
 impl Serialize for Abi {

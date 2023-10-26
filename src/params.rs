@@ -230,9 +230,7 @@ fn parse_simple_type(
 }
 
 fn parse_uint(input: &str) -> TypeParseResult<&str, Type> {
-    map_error(
-        verify(parse_sized("u"), check_int_size)(input).map(|(i, _)| (i, Type::U32)),
-    )
+    map_error(verify(parse_sized("u"), check_int_size)(input).map(|(i, _)| (i, Type::U32)))
 }
 
 fn parse_address(input: &str) -> TypeParseResult<&str, Type> {
@@ -322,9 +320,8 @@ fn parse_integer(input: &str) -> IResult<&str, usize> {
 fn check_int_size(i: &usize) -> bool {
     let i = *i;
 
-    i > 0 && i <=256 && i % 8 == 0
+    i > 0 && i <= 256 && i % 8 == 0
 }
-
 
 #[cfg(test)]
 mod test {
@@ -335,27 +332,25 @@ mod test {
 
     #[test]
     fn serde_u32() {
-            let v = json!({
-                "name": "a",
-                "type": "u32",
-            });
+        let v = json!({
+            "name": "a",
+            "type": "u32",
+        });
 
-            let param: Param = serde_json::from_value(v.clone()).expect("param deserialized");
+        let param: Param = serde_json::from_value(v.clone()).expect("param deserialized");
 
-            assert_eq!(
-                param,
-                Param {
-                    name: "a".to_string(),
-                    type_: Type::U32,
-                }
-            );
+        assert_eq!(
+            param,
+            Param {
+                name: "a".to_string(),
+                type_: Type::U32,
+            }
+        );
 
-            let param_json = serde_json::to_value(param).expect("param serialized");
+        let param_json = serde_json::to_value(param).expect("param serialized");
 
-            assert_eq!(v, param_json);
-        
+        assert_eq!(v, param_json);
     }
-
 
     #[test]
     fn serde_address() {

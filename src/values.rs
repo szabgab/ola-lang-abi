@@ -4,7 +4,6 @@ use crate::types::Type;
 
 type AddressValue = [usize; 4];
 
-
 type HashValue = [usize; 4];
 
 /// ABI decoded value.
@@ -50,7 +49,6 @@ impl Value {
 
     /// Encodes values into bytes.
     pub fn encode(values: &[Self]) -> Vec<usize> {
-
         let mut buf = vec![];
         for value in values {
             match value {
@@ -85,7 +83,7 @@ impl Value {
                     buf.resize(start + 1, 0);
 
                     if *b {
-                        buf[start + 1] = 1;
+                        buf[start] = 1;
                     }
                 }
 
@@ -105,12 +103,13 @@ impl Value {
                 Value::String(value) => {
                     let start = buf.len();
                     let value_len = value.as_bytes().len();
-                    buf.resize(start + 1, value_len);
+                    let new_len = start + value_len + 1;
+                    buf.resize(new_len, value_len);
 
                     // TODO Currently, Ola can only encode strings into arrays based on fields
                     // and does not support encoding into u8 type arrays.
                     // write bytes
-                    buf[start + 1..(start + 1 + value_len)].copy_from_slice(
+                    buf[start + 1..(new_len)].copy_from_slice(
                         value
                             .as_bytes()
                             .into_iter()
@@ -123,10 +122,11 @@ impl Value {
                 Value::Fields(value) => {
                     let start = buf.len();
                     let value_len = value.len();
-                    buf.resize(start + 1, value_len);
+                    let new_len = start + value_len + 1;
+                    buf.resize(new_len, value_len);
 
                     // write bytes
-                    buf[start + 1..(start + 1 + value_len)].copy_from_slice(value);
+                    buf[start + 1..new_len].copy_from_slice(value);
                 }
 
                 Value::Array(values, _) => {
@@ -309,33 +309,31 @@ mod test {
 
     use pretty_assertions::assert_eq;
 
-
     #[test]
     fn decode_uint() {
-
         let bs = vec![100, 200, 300];
 
-        let v =
-            Value::decode_from_slice(&bs, &[Type::U32, Type::U32, Type::U32]).expect("decode_from_slice failed");
+        let v = Value::decode_from_slice(&bs, &[Type::U32, Type::U32, Type::U32])
+            .expect("decode_from_slice failed");
 
         assert_eq!(v, vec![Value::U32(100), Value::U32(200), Value::U32(300)]);
     }
 
     #[test]
     fn decode_field() {
-
         let bs = vec![100, 200, 300];
 
-        let v =
-            Value::decode_from_slice(&bs, &[Type::Field, Type::Field, Type::Field]).expect("decode_from_slice failed");
+        let v = Value::decode_from_slice(&bs, &[Type::Field, Type::Field, Type::Field])
+            .expect("decode_from_slice failed");
 
-        assert_eq!(v, vec![Value::Field(100), Value::Field(200), Value::Field(300)]);
+        assert_eq!(
+            v,
+            vec![Value::Field(100), Value::Field(200), Value::Field(300)]
+        );
     }
 
-    
     #[test]
     fn decode_address() {
-
         let bs = [1, 2, 3, 4];
 
         let v = Value::decode_from_slice(&bs, &[Type::Address]).expect("decode_from_slice failed");
@@ -345,7 +343,6 @@ mod test {
 
     #[test]
     fn decode_hash() {
-
         let bs = [1, 2, 3, 4];
 
         let v = Value::decode_from_slice(&bs, &[Type::Hash]).expect("decode_from_slice failed");
@@ -356,14 +353,14 @@ mod test {
     #[test]
     fn decode_bool() {
         let bs = [0, 1];
-        let v = Value::decode_from_slice(&bs, &[Type::Bool, Type::Bool]).expect("decode_from_slice failed");
+        let v = Value::decode_from_slice(&bs, &[Type::Bool, Type::Bool])
+            .expect("decode_from_slice failed");
 
         assert_eq!(v, vec![Value::Bool(false), Value::Bool(true)]);
     }
 
     #[test]
     fn decode_fixed_array() {
-
         // encode some data
         let uint1 = 5;
         let uint2 = 6;
@@ -381,14 +378,8 @@ mod test {
             v,
             vec![Value::FixedArray(
                 vec![
-                    Value::FixedArray(
-                        vec![Value::U32(uint1), Value::U32(uint2)],
-                        Type::U32
-                    ),
-                    Value::FixedArray(
-                        vec![Value::U32(uint3), Value::U32(uint4)],
-                        Type::U32
-                    )
+                    Value::FixedArray(vec![Value::U32(uint1), Value::U32(uint2)], Type::U32),
+                    Value::FixedArray(vec![Value::U32(uint3), Value::U32(uint4)], Type::U32)
                 ],
                 uint_arr2
             )]
@@ -397,8 +388,11 @@ mod test {
 
     #[test]
     fn decode_string() {
-
-        let source =  "olavm".as_bytes().into_iter().map(|x| *x as usize).collect::<Vec<usize>>();
+        let source = "olavm"
+            .as_bytes()
+            .into_iter()
+            .map(|x| *x as usize)
+            .collect::<Vec<usize>>();
         let mut bs = vec![source.len() as usize];
         bs.extend_from_slice(source.as_slice());
         let v = Value::decode_from_slice(&bs, &[Type::String]).expect("decode_from_slice failed");
@@ -409,8 +403,11 @@ mod test {
 
     #[test]
     fn decode_fields() {
-
-        let source =  "hello,world".as_bytes().into_iter().map(|x| *x as usize).collect::<Vec<usize>>();
+        let source = "hello,world"
+            .as_bytes()
+            .into_iter()
+            .map(|x| *x as usize)
+            .collect::<Vec<usize>>();
         let mut bs = vec![source.len() as usize];
         bs.extend_from_slice(source.as_slice());
         let v = Value::decode_from_slice(&bs, &[Type::Fields]).expect("decode_from_slice failed");
@@ -420,7 +417,6 @@ mod test {
 
     #[test]
     fn decode_array() {
-
         // encode some data
         let uint1 = 5;
         let uint2 = 6;
@@ -453,51 +449,39 @@ mod test {
         );
     }
 
-
     #[test]
     fn decode_array2() {
-
         // [[1, 2, 3], [8, 9]]
         let bs = vec![3, 1, 2, 3, 2, 8, 9];
 
         let uint_arr2 = Type::FixedArray(Box::new(Type::Array(Box::new(Type::U32))), 2);
 
-        let v = Value::decode_from_slice(&bs, &[uint_arr2])
-            .expect("decode_from_slice failed");
-
+        let v = Value::decode_from_slice(&bs, &[uint_arr2]).expect("decode_from_slice failed");
 
         assert_eq!(
             v,
-            vec![
-                Value::FixedArray(
-                    vec![
-                        Value::Array(
-                            vec![
-                                Value::U32(1),
-                                Value::U32(2),
-                                Value::U32(3),
-                            ],
-                            Type::U32
-                        ),
-                        Value::Array(vec![Value::U32(8), Value::U32(9)], Type::U32),
-                    ],
-                    Type::Array(Box::new(Type::U32))
-                ),
-            ],
+            vec![Value::FixedArray(
+                vec![
+                    Value::Array(
+                        vec![Value::U32(1), Value::U32(2), Value::U32(3),],
+                        Type::U32
+                    ),
+                    Value::Array(vec![Value::U32(8), Value::U32(9)], Type::U32),
+                ],
+                Type::Array(Box::new(Type::U32))
+            ),],
         );
     }
 
     #[test]
     fn decode_fixed_tuple() {
-
-
         // encode some data
         let uint1 = 5;
         let uint2 = 6;
         let addr = [1, 2, 3, 4];
         let mut bs = vec![uint1, uint2];
         bs.extend_from_slice(&addr);
-        
+
         let v = Value::decode_from_slice(
             &bs,
             &[Type::Tuple(vec![
@@ -520,12 +504,15 @@ mod test {
 
     #[test]
     fn decode_tuple() {
-
         // encode some data
         let uint1 = 5;
         let mut bs = vec![uint1];
         let str = "olavm".to_string();
-        let source =  str.as_bytes().into_iter().map(|x| *x as usize).collect::<Vec<usize>>();
+        let source = str
+            .as_bytes()
+            .into_iter()
+            .map(|x| *x as usize)
+            .collect::<Vec<usize>>();
         bs.resize(2, 0);
         bs[1] = source.len() as usize;
         bs.extend_from_slice(&source);
@@ -562,8 +549,8 @@ mod test {
         ];
 
         // f("olavm", 12, [[1, 2], [3]])
-        let  bs = vec![5, 111, 108, 97, 118, 109, 12, 2, 1, 2, 1, 3];
-    
+        let bs = vec![5, 111, 108, 97, 118, 109, 12, 2, 1, 2, 1, 3];
+
         let v = Value::decode_from_slice(&bs, &tys).expect("decode_from_slice failed");
 
         assert_eq!(
@@ -573,13 +560,7 @@ mod test {
                 Value::U32(12),
                 Value::FixedArray(
                     vec![
-                        Value::Array(
-                            vec![
-                                Value::U32(1),
-                                Value::U32(2),
-                            ],
-                            Type::U32
-                        ),
+                        Value::Array(vec![Value::U32(1), Value::U32(2),], Type::U32),
                         Value::Array(vec![Value::U32(3)], Type::U32),
                     ],
                     Type::Array(Box::new(Type::U32))
@@ -588,181 +569,126 @@ mod test {
         );
     }
 
+    #[test]
+    fn encode_uint() {
+        let value = Value::U32(12);
 
-    // #[test]
-    // fn encode_uint() {
-    //     let value = Value::Uint(U256::from(0xefcdab), 56);
+        let expected_bytes = vec![12];
 
-    //     let mut expected_bytes = [0u8; 32].to_vec();
-    //     expected_bytes[31] = 0xab;
-    //     expected_bytes[30] = 0xcd;
-    //     expected_bytes[29] = 0xef;
+        assert_eq!(Value::encode(&[value]), expected_bytes);
+    }
 
-    //     assert_eq!(Value::encode(&[value]), expected_bytes);
-    // }
+    #[test]
+    fn encode_address() {
+        let addr = [1, 2, 3, 4];
+        let value = Value::Address(addr);
 
-    // #[test]
-    // fn encode_int() {
-    //     let value = Value::Int(U256::from(0xabcdef), 56);
+        let expected_bytes = vec![1, 2, 3, 4];
 
-    //     let mut expected_bytes = [0u8; 32].to_vec();
-    //     expected_bytes[31] = 0xef;
-    //     expected_bytes[30] = 0xcd;
-    //     expected_bytes[29] = 0xab;
+        assert_eq!(Value::encode(&[value]), expected_bytes);
+    }
 
-    //     assert_eq!(Value::encode(&[value]), expected_bytes);
-    // }
+    #[test]
+    fn encode_hash() {
+        let addr = [1, 2, 3, 4];
+        let value = Value::Address(addr);
 
-    // #[test]
-    // fn encode_address() {
-    //     let addr = H160::random();
-    //     let value = Value::Address(addr);
+        let expected_bytes = vec![1, 2, 3, 4];
 
-    //     let mut expected_bytes = [0u8; 32].to_vec();
-    //     expected_bytes[12..32].copy_from_slice(addr.as_fixed_bytes());
+        assert_eq!(Value::encode(&[value]), expected_bytes);
+    }
 
-    //     assert_eq!(Value::encode(&[value]), expected_bytes);
-    // }
+    #[test]
+    fn encode_bool() {
+        let true_vec = vec![1];
 
-    // #[test]
-    // fn encode_bool() {
-    //     let mut true_vec = [0u8; 32].to_vec();
-    //     true_vec[31] = 1;
+        let false_vec = vec![0];
 
-    //     let false_vec = [0u8; 32].to_vec();
+        assert_eq!(Value::encode(&[Value::Bool(true)]), true_vec);
+        assert_eq!(Value::encode(&[Value::Bool(false)]), false_vec);
+    }
 
-    //     assert_eq!(Value::encode(&[Value::Bool(true)]), true_vec);
-    //     assert_eq!(Value::encode(&[Value::Bool(false)]), false_vec);
-    // }
+    #[test]
+    fn encode_fixed_array() {
+        let uint1 = 57;
+        let uint2 = 108;
 
-    // #[test]
-    // fn encode_fixed_bytes() {
-    //     let mut bytes = [0u8; 32].to_vec();
-    //     for (i, b) in bytes.iter_mut().enumerate().take(16).skip(1) {
-    //         *b = i as u8;
-    //     }
+        let value = Value::FixedArray(vec![Value::U32(uint1), Value::U32(uint2)], Type::U32);
 
-    //     assert_eq!(
-    //         Value::encode(&[Value::FixedBytes(bytes[0..16].to_vec())]),
-    //         bytes
-    //     );
-    // }
+        let expected_bytes = [57, 108];
 
-    // #[test]
-    // fn encode_fixed_array() {
-    //     let uint1 = U256::from(57);
-    //     let uint2 = U256::from(109);
+        assert_eq!(Value::encode(&[value]), expected_bytes);
+    }
 
-    //     let value = Value::FixedArray(
-    //         vec![Value::Uint(uint1, 56), Value::Uint(uint2, 56)],
-    //         Type::Uint(56),
-    //     );
+    #[test]
+    fn encode_string_and_fields() {
+        // Bytes and strings are encoded in the same way.
 
-    //     let mut expected_bytes = [0u8; 64];
-    //     uint1.to_big_endian(&mut expected_bytes[0..32]);
-    //     uint2.to_big_endian(&mut expected_bytes[32..64]);
+        let expected_bytes = [5, 111, 108, 97, 118, 109];
+        assert_eq!(
+            Value::encode(&[Value::String("olavm".to_string())]),
+            expected_bytes
+        );
+    }
 
-    //     assert_eq!(Value::encode(&[value]), expected_bytes);
-    // }
+    #[test]
+    fn encode_array() {
+        let addr1 = [1, 2, 3, 4];
+        let addr2 = [5, 6, 7, 8];
 
-    // #[test]
-    // fn encode_string_and_bytes() {
-    //     // Bytes and strings are encoded in the same way.
+        let value = Value::Array(
+            vec![Value::Address(addr1), Value::Address(addr2)],
+            Type::Address,
+        );
 
-    //     let mut s = String::with_capacity(2890);
-    //     s.reserve(2890);
-    //     for i in 0..1000 {
-    //         s += i.to_string().as_ref();
-    //     }
+        let expected_bytes = [2, 1, 2, 3, 4, 5, 6, 7, 8];
 
-    //     let mut expected_bytes = [0u8; 2976];
-    //     expected_bytes[31] = 0x20; // big-endian offset
-    //     expected_bytes[63] = 0x4a; // big-endian string size (2890 = 0xb4a)
-    //     expected_bytes[62] = 0x0b;
-    //     expected_bytes[64..(64 + 2890)].copy_from_slice(s.as_bytes());
+        assert_eq!(Value::encode(&[value]), expected_bytes);
+    }
 
-    //     assert_eq!(Value::encode(&[Value::String(s)]), expected_bytes);
-    // }
+    #[test]
+    fn encode_fixed_tuple() {
+        let addr = [1, 2, 3, 4];
 
-    // #[test]
-    // fn encode_array() {
-    //     let addr1 = H160::random();
-    //     let addr2 = H160::random();
+        let value = Value::Tuple(vec![
+            ("a".to_string(), Value::Address(addr)),
+            ("b".to_string(), Value::U32(99)),
+        ]);
 
-    //     let value = Value::Array(
-    //         vec![Value::Address(addr1), Value::Address(addr2)],
-    //         Type::Address,
-    //     );
+        let expected_bytes = [1, 2, 3, 4, 99];
 
-    //     let mut expected_bytes = [0u8; 128];
-    //     expected_bytes[31] = 0x20; // big-endian offset
-    //     expected_bytes[63] = 2; // big-endian array length
-    //     expected_bytes[76..96].copy_from_slice(addr1.as_fixed_bytes());
-    //     expected_bytes[108..128].copy_from_slice(addr2.as_fixed_bytes());
+        assert_eq!(Value::encode(&[value]), expected_bytes);
+    }
 
-    //     assert_eq!(Value::encode(&[value]), expected_bytes);
-    // }
+    #[test]
+    fn encode_tuple() {
+        let s = "olavm".to_string();
 
-    // #[test]
-    // fn encode_fixed_tuple() {
-    //     let addr = H160::random();
-    //     let uint = U256::from(53);
+        let value = Value::Tuple(vec![
+            ("a".to_string(), Value::String(s.clone())),
+            ("b".to_string(), Value::U32(99)),
+        ]);
 
-    //     let value = Value::Tuple(vec![
-    //         ("a".to_string(), Value::Address(addr)),
-    //         ("b".to_string(), Value::Uint(uint, 256)),
-    //     ]);
+        let expected_bytes = [5, 111, 108, 97, 118, 109, 99];
 
-    //     let mut expected_bytes = [0u8; 64];
-    //     expected_bytes[12..32].copy_from_slice(addr.as_fixed_bytes());
-    //     uint.to_big_endian(&mut expected_bytes[32..64]);
+        assert_eq!(Value::encode(&[value]), expected_bytes);
+    }
 
-    //     assert_eq!(Value::encode(&[value]), expected_bytes);
-    // }
+    #[test]
+    fn encode_many() {
+        let values = vec![
+            Value::String("olavm".to_string()),
+            Value::U32(99),
+            Value::FixedArray(
+                vec![
+                    Value::Array(vec![Value::U32(1), Value::U32(2)], Type::U32),
+                    Value::Array(vec![Value::U32(3)], Type::U32),
+                ],
+                Type::Array(Box::new(Type::U32)),
+            ),
+        ];
 
-    // #[test]
-    // fn encode_tuple() {
-    //     let s = "abc".to_string();
-    //     let uint = U256::from(53);
-
-    //     let value = Value::Tuple(vec![
-    //         ("a".to_string(), Value::String(s.clone())),
-    //         ("b".to_string(), Value::Uint(uint, 256)),
-    //     ]);
-
-    //     let mut expected_bytes = [0u8; 160];
-    //     expected_bytes[31] = 0x20; // big-endian tuple offset
-    //     expected_bytes[63] = 0x40; // big-endian string offset
-    //     uint.to_big_endian(&mut expected_bytes[64..96]);
-    //     expected_bytes[127] = 3; // big-endian string length
-    //     expected_bytes[128..(128 + s.len())].copy_from_slice(s.as_bytes());
-
-    //     assert_eq!(Value::encode(&[value]), expected_bytes);
-    // }
-
-    // #[test]
-    // fn encode_many() {
-    //     let values = vec![
-    //         Value::String("abc".to_string()),
-    //         Value::Uint(U256::from(5), 32),
-    //         Value::FixedArray(
-    //             vec![
-    //                 Value::Array(
-    //                     vec![
-    //                         Value::Uint(U256::from(1), 32),
-    //                         Value::Uint(U256::from(2), 32),
-    //                     ],
-    //                     Type::Uint(32),
-    //                 ),
-    //                 Value::Array(vec![Value::Uint(U256::from(3), 32)], Type::Uint(32)),
-    //             ],
-    //             Type::Array(Box::new(Type::Uint(32))),
-    //         ),
-    //     ];
-
-    //     let expected = "0000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000036162630000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000003";
-    //     let encoded = hex::encode(Value::encode(&values));
-
-    //     assert_eq!(encoded, expected);
-    // }
+        let expected = [5, 111, 108, 97, 118, 109, 99, 2, 1, 2, 1, 3];
+        assert_eq!(Value::encode(&values), expected);
+    }
 }
