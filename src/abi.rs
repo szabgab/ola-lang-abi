@@ -328,7 +328,7 @@ mod test {
         let uint2 = 109;
 
         let input_values = vec![
-            Value::Address(addr),
+            Value::Address(crate::FixedArray4(addr)),
             Value::FixedArray(vec![Value::U32(uint1), Value::U32(uint2)], Type::U32),
         ];
 

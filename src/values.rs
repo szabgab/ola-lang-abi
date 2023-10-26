@@ -1,10 +1,46 @@
 use anyhow::{anyhow, Result};
 
 use crate::types::Type;
+use std::fmt;
 
-type AddressValue = [usize; 4];
 
-type HashValue = [usize; 4];
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FixedArray4(pub [usize; 4]);
+
+impl From<&str> for FixedArray4 {
+    fn from(s: &str) -> Self {
+        let cleaned = s.trim_start_matches("0x");
+        let mut result = [0; 4];
+        for (i, chunk) in cleaned.as_bytes().rchunks(16).rev().enumerate() {
+            let chunk_str = std::str::from_utf8(chunk).expect("Invalid UTF-8");
+            result[i] = u64::from_str_radix(chunk_str, 16).expect("Failed to parse hex string") as usize;
+        }
+        FixedArray4(result)
+    }
+}
+
+impl FixedArray4 {
+    pub fn to_hex_string(&self) -> String {
+        let mut hex_string = String::with_capacity(66); // 64 for data + 2 for "0x" prefix
+        hex_string.push_str("0x");
+        for &value in self.0.iter() {
+            hex_string.push_str(&format!("{:016x}", value as u64));
+        }
+        hex_string
+    }
+}
+
+
+impl fmt::Display for FixedArray4 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "0x")?;
+        for &value in self.0.iter() {
+            write!(f, "{:016x}", value as u64)?;
+        }
+        Ok(())
+    }
+}
+
 
 /// ABI decoded value.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -14,9 +50,9 @@ pub enum Value {
     /// Signed int value (int<M>).
     Field(usize),
     /// Address value (address).
-    Address(AddressValue),
+    Address(FixedArray4),
     /// Hash value(hash).
-    Hash(HashValue),
+    Hash(FixedArray4),
     /// Bool value (bool).
     Bool(bool),
 
@@ -67,7 +103,7 @@ impl Value {
                     buf.resize(start + 4, 0);
 
                     // big-endian, as if it were a uint160.
-                    buf[start..(start + 4)].copy_from_slice(addr);
+                    buf[start..(start + 4)].copy_from_slice(&addr.0);
                 }
 
                 Value::Hash(hash) => {
@@ -75,7 +111,7 @@ impl Value {
                     buf.resize(start + 4, 0);
 
                     // big-endian, as if it were a uint160.
-                    buf[start..(start + 4)].copy_from_slice(hash);
+                    buf[start..(start + 4)].copy_from_slice(&hash.0);
                 }
 
                 Value::Bool(b) => {
@@ -196,7 +232,7 @@ impl Value {
                 let mut addr = [0usize; 4];
                 addr.copy_from_slice(slice);
 
-                Ok((Value::Address(addr), 4))
+                Ok((Value::Address(FixedArray4(addr)), 4))
             }
 
             Type::Hash => {
@@ -208,7 +244,7 @@ impl Value {
                 let mut hash = [0usize; 4];
                 hash.copy_from_slice(slice);
 
-                Ok((Value::Hash(hash), 4))
+                Ok((Value::Hash(FixedArray4(hash)), 4))
             }
 
             Type::Bool => {
@@ -303,7 +339,6 @@ impl Value {
 #[cfg(test)]
 mod test {
 
-    use std::vec;
 
     use super::*;
 
@@ -331,14 +366,13 @@ mod test {
             vec![Value::Field(100), Value::Field(200), Value::Field(300)]
         );
     }
-
     #[test]
     fn decode_address() {
-        let bs = [1, 2, 3, 4];
+        let bs = FixedArray4::from("0x0000000000000000000000000000000100000000000000020000000000000003");
 
-        let v = Value::decode_from_slice(&bs, &[Type::Address]).expect("decode_from_slice failed");
+        let v = Value::decode_from_slice(&bs.0, &[Type::Address]).expect("decode_from_slice failed");
 
-        assert_eq!(v, vec![Value::Address([1, 2, 3, 4])]);
+        assert_eq!(v, vec![Value::Address(FixedArray4([0, 1, 2, 3]))]);
     }
 
     #[test]
@@ -347,7 +381,7 @@ mod test {
 
         let v = Value::decode_from_slice(&bs, &[Type::Hash]).expect("decode_from_slice failed");
 
-        assert_eq!(v, vec![Value::Hash([1, 2, 3, 4])]);
+        assert_eq!(v, vec![Value::Hash(FixedArray4([1, 2, 3, 4]))]);
     }
 
     #[test]
@@ -497,7 +531,7 @@ mod test {
             vec![Value::Tuple(vec![
                 ("a".to_string(), Value::U32(uint1)),
                 ("b".to_string(), Value::U32(uint2)),
-                ("c".to_string(), Value::Address(addr))
+                ("c".to_string(), Value::Address(FixedArray4(addr)))
             ])]
         );
     }
@@ -534,7 +568,7 @@ mod test {
             vec![Value::Tuple(vec![
                 ("a".to_string(), Value::U32(uint1)),
                 ("b".to_string(), Value::String(str)),
-                ("c".to_string(), Value::Address(addr))
+                ("c".to_string(), Value::Address(FixedArray4(addr)))
             ])]
         );
     }
@@ -581,7 +615,7 @@ mod test {
     #[test]
     fn encode_address() {
         let addr = [1, 2, 3, 4];
-        let value = Value::Address(addr);
+        let value = Value::Address(FixedArray4(addr));
 
         let expected_bytes = vec![1, 2, 3, 4];
 
@@ -591,7 +625,7 @@ mod test {
     #[test]
     fn encode_hash() {
         let addr = [1, 2, 3, 4];
-        let value = Value::Address(addr);
+        let value = Value::Address(FixedArray4(addr));
 
         let expected_bytes = vec![1, 2, 3, 4];
 
@@ -637,7 +671,7 @@ mod test {
         let addr2 = [5, 6, 7, 8];
 
         let value = Value::Array(
-            vec![Value::Address(addr1), Value::Address(addr2)],
+            vec![Value::Address(FixedArray4(addr1)), Value::Address(FixedArray4(addr2))],
             Type::Address,
         );
 
@@ -651,7 +685,7 @@ mod test {
         let addr = [1, 2, 3, 4];
 
         let value = Value::Tuple(vec![
-            ("a".to_string(), Value::Address(addr)),
+            ("a".to_string(), Value::Address(FixedArray4(addr))),
             ("b".to_string(), Value::U32(99)),
         ]);
 
