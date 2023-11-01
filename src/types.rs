@@ -12,7 +12,7 @@ pub enum Type {
     /// Bool type (bool).
     Bool,
     /// Fixed size array type (T\[k\])
-    FixedArray(Box<Type>, usize),
+    FixedArray(Box<Type>, u64),
     /// UTF-8 string type (string).
     String,
     /// Dynamic size bytes type (bytes).

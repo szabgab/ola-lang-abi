@@ -28,7 +28,7 @@ impl Abi {
     // Decode function input from slice.
     pub fn decode_input_from_slice<'a>(
         &'a self,
-        input: &[usize],
+        input: &[u64],
     ) -> Result<(&'a Function, DecodedParams)> {
         let f = self
             .functions
@@ -42,7 +42,7 @@ impl Abi {
         Ok((f, decoded_params))
     }
 
-    pub fn encode_input_with_signature(&self, signature: &str, params: &[Value]) -> Result<Vec<usize>> {
+    pub fn encode_input_with_signature(&self, signature: &str, params: &[Value]) -> Result<Vec<u64>> {
         let f = self
             .functions
             .iter()
@@ -52,17 +52,17 @@ impl Abi {
         let mut enc_input = vec![f.method_id()];
 
         let params = Value::encode(params);
-        enc_input.push(params.len());
+        enc_input.push(params.len() as u64);
         enc_input.extend(params);
 
         Ok(enc_input)
     }
 
-    pub fn encode_input_values(&self, params: &[Value]) -> Result<Vec<usize>> {
+    pub fn encode_input_values(&self, params: &[Value]) -> Result<Vec<u64>> {
         let mut enc_input = vec![];
 
         let params = Value::encode(params);
-        enc_input.push(params.len());
+        enc_input.push(params.len() as u64);
         enc_input.extend(params);
 
         Ok(enc_input)
@@ -111,14 +111,14 @@ pub struct Function {
 
 impl Function {
     /// Computes the function's method id (function selector).
-    pub fn method_id(&self) -> usize {
+    pub fn method_id(&self) -> u64 {
         use tiny_keccak::{Hasher, Keccak};
 
         let mut keccak_out = [0u8; 32];
         let mut hasher = Keccak::v256();
         hasher.update(self.signature().as_bytes());
         hasher.finalize(&mut keccak_out);
-        u32::from_be_bytes(keccak_out[0..4].try_into().unwrap()) as usize
+        u32::from_be_bytes(keccak_out[0..4].try_into().unwrap()) as u64
     }
 
     /// Returns the function's signature.
@@ -135,7 +135,7 @@ impl Function {
     }
 
     // Decode function input from slice.
-    pub fn decode_input_from_slice(&self, input: &[usize]) -> Result<DecodedParams> {
+    pub fn decode_input_from_slice(&self, input: &[u64]) -> Result<DecodedParams> {
         let inputs_types = self
             .inputs
             .iter()
@@ -340,7 +340,7 @@ mod test {
         let mut enc_input = vec![abi.functions[0].method_id()];
 
         let params = Value::encode(&input_values);
-        enc_input.push(params.len());
+        enc_input.push(params.len() as u64);
         enc_input.extend(params);
         let dec = abi
             .decode_input_from_slice(&enc_input)

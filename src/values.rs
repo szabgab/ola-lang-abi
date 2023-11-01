@@ -5,7 +5,7 @@ use std::fmt;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FixedArray4(pub [usize; 4]);
+pub struct FixedArray4(pub [u64; 4]);
 
 impl From<&str> for FixedArray4 {
     fn from(s: &str) -> Self {
@@ -13,7 +13,7 @@ impl From<&str> for FixedArray4 {
         let mut result = [0; 4];
         for (i, chunk) in cleaned.as_bytes().rchunks(16).rev().enumerate() {
             let chunk_str = std::str::from_utf8(chunk).expect("Invalid UTF-8");
-            result[i] = u64::from_str_radix(chunk_str, 16).expect("Failed to parse hex string") as usize;
+            result[i] = u64::from_str_radix(chunk_str, 16).expect("Failed to parse hex string") as u64;
         }
         FixedArray4(result)
     }
@@ -46,9 +46,9 @@ impl fmt::Display for FixedArray4 {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Value {
     /// Unsigned int value (uint<M>).
-    U32(usize),
+    U32(u64),
     /// Signed int value (int<M>).
-    Field(usize),
+    Field(u64),
     /// Address value (address).
     Address(FixedArray4),
     /// Hash value(hash).
@@ -61,7 +61,7 @@ pub enum Value {
     /// UTF-8 string value (string).
     String(String),
     /// Dynamic size field value.
-    Fields(Vec<usize>),
+    Fields(Vec<u64>),
     /// Dynamic size array value (T[]).
     Array(Vec<Value>, Type),
     /// Tuple value (tuple(T1, T2, ..., Tn)).
@@ -72,7 +72,7 @@ pub enum Value {
 
 impl Value {
     /// Decodes values from bytes using the given type hint.
-    pub fn decode_from_slice(bs: &[usize], tys: &[Type]) -> Result<Vec<Value>> {
+    pub fn decode_from_slice(bs: &[u64], tys: &[Type]) -> Result<Vec<Value>> {
         tys.iter()
             .try_fold((vec![], 0), |(mut values, at), ty| {
                 let (value, consumed) = Self::decode(bs, ty, 0, at)?;
@@ -84,7 +84,7 @@ impl Value {
     }
 
     /// Encodes values into bytes.
-    pub fn encode(values: &[Self]) -> Vec<usize> {
+    pub fn encode(values: &[Self]) -> Vec<u64> {
         let mut buf = vec![];
         for value in values {
             match value {
@@ -140,7 +140,7 @@ impl Value {
                     let start = buf.len();
                     let value_len = value.as_bytes().len();
                     let new_len = start + value_len + 1;
-                    buf.resize(new_len, value_len);
+                    buf.resize(new_len, value_len as u64);
 
                     // TODO Currently, Ola can only encode strings into arrays based on fields
                     // and does not support encoding into u8 type arrays.
@@ -149,8 +149,8 @@ impl Value {
                         value
                             .as_bytes()
                             .into_iter()
-                            .map(|x| *x as usize)
-                            .collect::<Vec<usize>>()
+                            .map(|x| *x as u64)
+                            .collect::<Vec<u64>>()
                             .as_slice(),
                     );
                 }
@@ -159,7 +159,7 @@ impl Value {
                     let start = buf.len();
                     let value_len = value.len();
                     let new_len = start + value_len + 1;
-                    buf.resize(new_len, value_len);
+                    buf.resize(new_len, value_len as u64);
 
                     // write bytes
                     buf[start + 1..new_len].copy_from_slice(value);
@@ -167,7 +167,7 @@ impl Value {
 
                 Value::Array(values, _) => {
                     let start = buf.len();
-                    buf.resize(start + 1, values.len());
+                    buf.resize(start + 1, values.len() as u64);
                     // write array values
                     let bytes = Self::encode(values);
                     buf.extend(bytes);
@@ -186,7 +186,7 @@ impl Value {
             Value::Address(_) => Type::Address,
             Value::Hash(_) => Type::Hash,
             Value::Bool(_) => Type::Bool,
-            Value::FixedArray(values, ty) => Type::FixedArray(Box::new(ty.clone()), values.len()),
+            Value::FixedArray(values, ty) => Type::FixedArray(Box::new(ty.clone()), values.len() as u64),
             Value::String(_) => Type::String,
             Value::Fields(_) => Type::Fields,
             Value::Array(_, ty) => Type::Array(Box::new(ty.clone())),
@@ -199,10 +199,10 @@ impl Value {
         }
     }
 
-    fn decode(bs: &[usize], ty: &Type, base_addr: usize, at: usize) -> Result<(Value, usize)> {
+    fn decode(bs: &[u64], ty: &Type, base_addr: usize, at: usize) -> Result<(Value, usize)> {
         match ty {
             Type::U32 => {
-                let at = base_addr + at;
+                let at = base_addr + at ;
                 let slice = bs
                     .get(at..(at + 1))
                     .ok_or_else(|| anyhow!("reached end of input while decoding {:?}", ty))?;
@@ -229,7 +229,7 @@ impl Value {
                     .get(at..(at + 4))
                     .ok_or_else(|| anyhow!("reached end of input while decoding {:?}", ty))?;
 
-                let mut addr = [0usize; 4];
+                let mut addr = [0u64; 4];
                 addr.copy_from_slice(slice);
 
                 Ok((Value::Address(FixedArray4(addr)), 4))
@@ -241,7 +241,7 @@ impl Value {
                     .get(at..(at + 4))
                     .ok_or_else(|| anyhow!("reached end of input while decoding {:?}", ty))?;
 
-                let mut hash = [0usize; 4];
+                let mut hash = [0u64; 4];
                 hash.copy_from_slice(slice);
 
                 Ok((Value::Hash(FixedArray4(hash)), 4))
@@ -287,7 +287,7 @@ impl Value {
                 let field_len_slice = bs
                     .get(at..(at + 1))
                     .ok_or_else(|| anyhow!("reached end of input while decoding fields length"))?;
-                let field_len = field_len_slice[0];
+                let field_len = field_len_slice[0] as usize;
 
                 let at = at + 1;
                 let fields_value = bs
@@ -425,9 +425,9 @@ mod test {
         let source = "olavm"
             .as_bytes()
             .into_iter()
-            .map(|x| *x as usize)
-            .collect::<Vec<usize>>();
-        let mut bs = vec![source.len() as usize];
+            .map(|x| *x as u64)
+            .collect::<Vec<u64>>();
+        let mut bs = vec![source.len() as u64];
         bs.extend_from_slice(source.as_slice());
         let v = Value::decode_from_slice(&bs, &[Type::String]).expect("decode_from_slice failed");
 
@@ -440,9 +440,9 @@ mod test {
         let source = "hello,world"
             .as_bytes()
             .into_iter()
-            .map(|x| *x as usize)
-            .collect::<Vec<usize>>();
-        let mut bs = vec![source.len() as usize];
+            .map(|x| *x as u64)
+            .collect::<Vec<u64>>();
+        let mut bs = vec![source.len() as u64];
         bs.extend_from_slice(source.as_slice());
         let v = Value::decode_from_slice(&bs, &[Type::Fields]).expect("decode_from_slice failed");
         let expected_fields = vec![104, 101, 108, 108, 111, 44, 119, 111, 114, 108, 100];
@@ -545,10 +545,10 @@ mod test {
         let source = str
             .as_bytes()
             .into_iter()
-            .map(|x| *x as usize)
-            .collect::<Vec<usize>>();
+            .map(|x| *x as u64)
+            .collect::<Vec<u64>>();
         bs.resize(2, 0);
-        bs[1] = source.len() as usize;
+        bs[1] = source.len() as u64;
         bs.extend_from_slice(&source);
         let addr = [1, 2, 3, 4];
         bs.extend_from_slice(&addr);

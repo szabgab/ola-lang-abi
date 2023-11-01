@@ -263,7 +263,7 @@ fn parse_array(
             i,
         ))?;
 
-        let array_from_size = |ty: Type, size: Option<usize>| match size {
+        let array_from_size = |ty: Type, size: Option<u64>| match size {
             None => Type::Array(Box::new(ty)),
             Some(size) => Type::FixedArray(Box::new(ty), size),
         };
@@ -305,7 +305,7 @@ fn parse_tuple(
     }
 }
 
-fn parse_sized(t: &str) -> impl Fn(&str) -> IResult<&str, usize> + '_ {
+fn parse_sized(t: &str) -> impl Fn(&str) -> IResult<&str, u64> + '_ {
     move |input: &str| {
         let (i, _) = tag(t)(input)?;
 
@@ -313,11 +313,11 @@ fn parse_sized(t: &str) -> impl Fn(&str) -> IResult<&str, usize> + '_ {
     }
 }
 
-fn parse_integer(input: &str) -> IResult<&str, usize> {
+fn parse_integer(input: &str) -> IResult<&str, u64> {
     map_res(recognize(many1(digit1)), str::parse)(input)
 }
 
-fn check_int_size(i: &usize) -> bool {
+fn check_int_size(i: &u64) -> bool {
     let i = *i;
 
     i > 0 && i <= 256 && i % 8 == 0
