@@ -12,13 +12,11 @@ fn main() {
 
     let function_sig = "createBook(u32,string)";
 
-    let params = vec![
-        Value::U32(60),
-        Value::String("olavm".to_string()),
-    ];
+    let params = vec![Value::U32(60), Value::String("olavm".to_string())];
 
-    let input = abi.encode_input_with_signature(function_sig, &params).unwrap();
+    let input = abi
+        .encode_input_with_signature(function_sig, &params)
+        .unwrap();
 
     println!("create_book input: {:?}", input);
-
 }

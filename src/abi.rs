@@ -42,7 +42,11 @@ impl Abi {
         Ok((f, decoded_params))
     }
 
-    pub fn encode_input_with_signature(&self, signature: &str, params: &[Value]) -> Result<Vec<u64>> {
+    pub fn encode_input_with_signature(
+        &self,
+        signature: &str,
+        params: &[Value],
+    ) -> Result<Vec<u64>> {
         let f = self
             .functions
             .iter()
@@ -67,7 +71,6 @@ impl Abi {
 
         Ok(enc_input)
     }
-
 }
 
 impl Serialize for Abi {

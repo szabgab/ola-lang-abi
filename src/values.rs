@@ -3,7 +3,6 @@ use anyhow::{anyhow, Result};
 use crate::types::Type;
 use std::fmt;
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FixedArray4(pub [u64; 4]);
 
@@ -13,7 +12,8 @@ impl From<&str> for FixedArray4 {
         let mut result = [0; 4];
         for (i, chunk) in cleaned.as_bytes().rchunks(16).rev().enumerate() {
             let chunk_str = std::str::from_utf8(chunk).expect("Invalid UTF-8");
-            result[i] = u64::from_str_radix(chunk_str, 16).expect("Failed to parse hex string") as u64;
+            result[i] =
+                u64::from_str_radix(chunk_str, 16).expect("Failed to parse hex string") as u64;
         }
         FixedArray4(result)
     }
@@ -30,7 +30,6 @@ impl FixedArray4 {
     }
 }
 
-
 impl fmt::Display for FixedArray4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "0x")?;
@@ -40,7 +39,6 @@ impl fmt::Display for FixedArray4 {
         Ok(())
     }
 }
-
 
 /// ABI decoded value.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -186,7 +184,9 @@ impl Value {
             Value::Address(_) => Type::Address,
             Value::Hash(_) => Type::Hash,
             Value::Bool(_) => Type::Bool,
-            Value::FixedArray(values, ty) => Type::FixedArray(Box::new(ty.clone()), values.len() as u64),
+            Value::FixedArray(values, ty) => {
+                Type::FixedArray(Box::new(ty.clone()), values.len() as u64)
+            }
             Value::String(_) => Type::String,
             Value::Fields(_) => Type::Fields,
             Value::Array(_, ty) => Type::Array(Box::new(ty.clone())),
@@ -202,7 +202,7 @@ impl Value {
     fn decode(bs: &[u64], ty: &Type, base_addr: usize, at: usize) -> Result<(Value, usize)> {
         match ty {
             Type::U32 => {
-                let at = base_addr + at ;
+                let at = base_addr + at;
                 let slice = bs
                     .get(at..(at + 1))
                     .ok_or_else(|| anyhow!("reached end of input while decoding {:?}", ty))?;
@@ -339,7 +339,6 @@ impl Value {
 #[cfg(test)]
 mod test {
 
-
     use super::*;
 
     use pretty_assertions::assert_eq;
@@ -368,9 +367,11 @@ mod test {
     }
     #[test]
     fn decode_address() {
-        let bs = FixedArray4::from("0x0000000000000000000000000000000100000000000000020000000000000003");
+        let bs =
+            FixedArray4::from("0x0000000000000000000000000000000100000000000000020000000000000003");
 
-        let v = Value::decode_from_slice(&bs.0, &[Type::Address]).expect("decode_from_slice failed");
+        let v =
+            Value::decode_from_slice(&bs.0, &[Type::Address]).expect("decode_from_slice failed");
 
         assert_eq!(v, vec![Value::Address(FixedArray4([0, 1, 2, 3]))]);
     }
@@ -671,7 +672,10 @@ mod test {
         let addr2 = [5, 6, 7, 8];
 
         let value = Value::Array(
-            vec![Value::Address(FixedArray4(addr1)), Value::Address(FixedArray4(addr2))],
+            vec![
+                Value::Address(FixedArray4(addr1)),
+                Value::Address(FixedArray4(addr2)),
+            ],
             Type::Address,
         );
 
