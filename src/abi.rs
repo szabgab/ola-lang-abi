@@ -121,7 +121,7 @@ impl Function {
         let mut hasher = Keccak::v256();
         hasher.update(self.signature().as_bytes());
         hasher.finalize(&mut keccak_out);
-        u32::from_be_bytes(keccak_out[0..4].try_into().unwrap()) as u64
+        u32::from_le_bytes(keccak_out[0..4].try_into().unwrap()) as u64
     }
 
     /// Returns the function's signature.

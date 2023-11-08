@@ -1,6 +1,6 @@
 [package]
 name = "ola-lang-abi"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 license = "MIT"
 description = "Ola Smart Contract ABI parsing library"
@@ -9,6 +9,7 @@ authors = ["yp945@outlook.com"]
 keywords = ["abi", "ola", "olac", ]
 documentation = "https://olang.readthedocs.io/"
 homepage = "https://github.com/Sin7Y/ola-lang-abi"
+exclude = ["/docs",  "/examples"]
 
 [dependencies]
 anyhow = { version = "1.0", default-features = false, features = ["std"] }
