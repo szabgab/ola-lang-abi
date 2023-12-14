@@ -33,11 +33,12 @@ impl Abi {
         let f = self
             .functions
             .iter()
-            .find(|f| f.method_id() == input[0])
+            .find(|f| f.method_id() == input[input.len()-1])
             .ok_or_else(|| anyhow!("ABI function not found"))?;
 
-        // input = [method_id, param-len, param1, param2, ...]
-        let decoded_params = f.decode_input_from_slice(&input[2..])?;
+        // input = [param1, param2, .. , param-len, method_id,]
+
+        let decoded_params = f.decode_input_from_slice(&input[0..input.len()-2])?;
 
         Ok((f, decoded_params))
     }
@@ -53,23 +54,19 @@ impl Abi {
             .find(|f| f.signature() == signature)
             .ok_or_else(|| anyhow!("ABI function not found"))?;
 
-        let mut enc_input = vec![f.method_id()];
+        let mut params = Value::encode(params);
+        params.push(params.len() as u64);
+        params.push(f.method_id());
 
-        let params = Value::encode(params);
-        enc_input.push(params.len() as u64);
-        enc_input.extend(params);
-
-        Ok(enc_input)
+        Ok(params)
     }
 
     pub fn encode_input_values(&self, params: &[Value]) -> Result<Vec<u64>> {
-        let mut enc_input = vec![];
 
-        let params = Value::encode(params);
-        enc_input.push(params.len() as u64);
-        enc_input.extend(params);
+        let mut params = Value::encode(params);
+        params.push(params.len() as u64);
 
-        Ok(enc_input)
+        Ok(params)
     }
 }
 
@@ -340,13 +337,12 @@ mod test {
             functions: vec![fun],
         };
 
-        let mut enc_input = vec![abi.functions[0].method_id()];
 
-        let params = Value::encode(&input_values);
-        enc_input.push(params.len() as u64);
-        enc_input.extend(params);
-        let dec = abi
-            .decode_input_from_slice(&enc_input)
+        let mut params = Value::encode(&input_values);
+        params.push(params.len() as u64);
+        params.push(abi.functions[0].method_id());
+        let dec: (&Function, DecodedParams) = abi
+            .decode_input_from_slice(&params)
             .expect("decode_input_from_slice failed");
 
         let expected_decoded_params = DecodedParams::from(
