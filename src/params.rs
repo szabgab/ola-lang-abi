@@ -219,18 +219,24 @@ fn parse_simple_type(
     move |input: &str| {
         alt((
             parse_tuple(components.clone()),
+            parse_fields,
             parse_uint,
+            parse_field,
             parse_address,
             parse_hash,
             parse_bool,
             parse_string,
-            parse_fields,
+
         ))(input)
     }
 }
 
 fn parse_uint(input: &str) -> TypeParseResult<&str, Type> {
     map_error(verify(parse_sized("u"), check_int_size)(input).map(|(i, _)| (i, Type::U32)))
+}
+
+fn parse_field(input: &str) -> TypeParseResult<&str, Type> {
+    map_error(tag("field")(input).map(|(i, _)| (i, Type::Field)))
 }
 
 fn parse_address(input: &str) -> TypeParseResult<&str, Type> {
@@ -344,6 +350,28 @@ mod test {
             Param {
                 name: "a".to_string(),
                 type_: Type::U32,
+            }
+        );
+
+        let param_json = serde_json::to_value(param).expect("param serialized");
+
+        assert_eq!(v, param_json);
+    }
+
+    #[test]
+    fn serde_field() {
+        let v = json!({
+            "name": "a",
+            "type": "field",
+        });
+
+        let param: Param = serde_json::from_value(v.clone()).expect("param deserialized");
+
+        assert_eq!(
+            param,
+            Param {
+                name: "a".to_string(),
+                type_: Type::Field,
             }
         );
 

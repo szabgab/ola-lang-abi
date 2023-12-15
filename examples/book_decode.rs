@@ -10,6 +10,7 @@ fn main() {
         serde_json::from_reader(file).expect("failed to parse ABI")
     };
 
+
     let data = vec![60, 5, 111, 108, 97, 118, 109, 7, 120553111];
 
     // Decode
