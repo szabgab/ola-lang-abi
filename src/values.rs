@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use crate::types::Type;
 use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FixedArray4(pub [u64; 4]);
 
 impl From<&str> for FixedArray4 {
@@ -40,8 +40,9 @@ impl fmt::Display for FixedArray4 {
     }
 }
 
+use serde::{Deserialize, Serialize};
 /// ABI decoded value.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Value {
     /// Unsigned int value (uint<M>).
     U32(u64),

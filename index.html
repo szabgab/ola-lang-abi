@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wasm Bindgen Decode Input Example</title>
+</head>
+<body>
+
+    <input type="file" id="fileInput" />
+
+    <script src="./pkg/ola_lang_abi_bg.wasm?v=1.0"></script>
+    <script type="module">
+        import init, { decode_input_from_js } from './pkg/ola_lang_abi.js';
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+        async function handleFileSelect(event) {
+            await init();
+            console.log('Decode input');
+            const fileInput = event.target;
+    
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const fileContent = new Uint8Array(e.target.result);
+                    console.log('Decode file content:', fileContent);
+                    const jsonString = JSON.stringify([...fileContent]);
+                    console.log('Decode JSON string:', jsonString);
+
+                    const data = new BigUint64Array([60n, 5n, 111n, 108n, 97n, 118n, 109n, 7n, 120553111n]);
+                    const dataArray = Array.from(data);
+
+                    const jsonData = JSON.parse(jsonString);
+                    let res = decode_input_from_js(jsonData, dataArray);
+                    console.log('Decode data result:', res);
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+    </script>
+</body>
+</html>
+

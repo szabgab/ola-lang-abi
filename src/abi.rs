@@ -117,7 +117,7 @@ impl<'de> Deserialize<'de> for Abi {
 }
 
 /// Contract function definition.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Function {
     /// Function name.
     pub name: String,

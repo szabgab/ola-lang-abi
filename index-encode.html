@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wasm Bindgen Encode Input Example</title>
+</head>
+<body>
+
+    <input type="file" id="fileInput" />
+
+    <script src="./pkg/ola_lang_abi_bg.wasm?v=1.0"></script>
+    <script type="module">
+        import init, {encode_input_from_js} from './pkg/ola_lang_abi.js';
+        import * as wasm from './pkg/ola_lang_abi.js';
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+        async function handleFileSelect(event) {
+            await init();
+            console.log('Encode input');
+            const fileInput = event.target;
+    
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                const fileContent = new Uint8Array(e.target.result);
+                console.log('Encode file content:', fileContent);
+                const jsonString = JSON.stringify([...fileContent]);
+                console.log('Encode JSON string:', jsonString);
+
+                const sig = 'createBook(u32,string)';
+                const jsonData = JSON.parse(jsonString);
+                const params = [
+                    { U32: 60 },
+                    { String: 'olavm' },
+                ];
+
+                let res = encode_input_from_js(jsonData,sig,params);
+                console.log('Encode data result:', res);
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+    </script>
+</body>
+</html>
+

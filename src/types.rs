@@ -1,5 +1,6 @@
+use serde::{Deserialize, Serialize};
 /// Available ABI types.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Type {
     /// Unsigned int type (uint<M>).
     U32,
