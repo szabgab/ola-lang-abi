@@ -1,0 +1,26 @@
+{
+  "name": "ola-lang-abi",
+  "version": "1.0.0",
+  "description": "encode and decode input data for ola contract",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sin7Y/ola-lang-abi.git"
+  },
+  "keywords": [
+    "ola-lang",
+    "abi"
+  ],
+  "author": "yp945 bchyl",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Sin7Y/ola-lang-abi/issues"
+  },
+  "homepage": "https://github.com/Sin7Y/ola-lang-abi#readme"
+}
