@@ -226,7 +226,6 @@ fn parse_simple_type(
             parse_hash,
             parse_bool,
             parse_string,
-
         ))(input)
     }
 }

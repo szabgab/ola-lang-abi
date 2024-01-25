@@ -33,12 +33,12 @@ impl Abi {
         let f = self
             .functions
             .iter()
-            .find(|f| f.method_id() == input[input.len()-1])
+            .find(|f| f.method_id() == input[input.len() - 1])
             .ok_or_else(|| anyhow!("ABI function not found"))?;
 
         // input = [param1, param2, .. , param-len, method_id]
 
-        let decoded_params = f.decode_input_from_slice(&input[0..input.len()-2])?;
+        let decoded_params = f.decode_input_from_slice(&input[0..input.len() - 2])?;
 
         Ok((f, decoded_params))
     }
@@ -57,7 +57,7 @@ impl Abi {
 
         // output = [param1, param2, .. , param-len]
 
-        let decoded_params = f.decode_output_from_slice(&output[0..output.len()-1])?;
+        let decoded_params = f.decode_output_from_slice(&output[0..output.len() - 1])?;
 
         Ok((f, decoded_params))
     }
@@ -81,7 +81,6 @@ impl Abi {
     }
 
     pub fn encode_values(&self, params: &[Value]) -> Result<Vec<u64>> {
-
         let mut params = Value::encode(params);
         params.push(params.len() as u64);
 
@@ -372,7 +371,6 @@ mod test {
         let abi = Abi {
             functions: vec![fun],
         };
-
 
         let mut params = Value::encode(&input_values);
         params.push(params.len() as u64);
