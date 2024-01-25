@@ -43,6 +43,24 @@ impl Abi {
         Ok((f, decoded_params))
     }
 
+    // Decode function input from slice.
+    pub fn decode_output_from_slice<'a>(
+        &'a self,
+        output: &[u64],
+    ) -> Result<(&'a Function, DecodedParams)> {
+        let f = self
+            .functions
+            .iter()
+            .find(|f| f.method_id() == output[output.len()-1])
+            .ok_or_else(|| anyhow!("ABI function not found"))?;
+
+        // output = [param1, param2, .. , param-len, method_id,]
+
+        let decoded_params = f.decode_input_from_slice(&output[0..output.len()-2])?;
+
+        Ok((f, decoded_params))
+    }
+
     pub fn encode_input_with_signature(
         &self,
         signature: &str,
@@ -61,7 +79,7 @@ impl Abi {
         Ok(params)
     }
 
-    pub fn encode_input_values(&self, params: &[Value]) -> Result<Vec<u64>> {
+    pub fn encode_values(&self, params: &[Value]) -> Result<Vec<u64>> {
 
         let mut params = Value::encode(params);
         params.push(params.len() as u64);
@@ -147,6 +165,23 @@ impl Function {
                 .iter()
                 .cloned()
                 .zip(Value::decode_from_slice(input, &inputs_types)?)
+                .collect::<Vec<_>>(),
+        ))
+    }
+
+    // Decode function output from slice.
+    pub fn decode_output_from_slice(&self, output: &[u64]) -> Result<DecodedParams> {
+        let ouputs_types = self
+            .outputs
+            .iter()
+            .map(|f_output| f_output.type_.clone())
+            .collect::<Vec<_>>();
+
+        Ok(DecodedParams::from(
+            self.outputs
+                .iter()
+                .cloned()
+                .zip(Value::decode_from_slice(output, &ouputs_types)?)
                 .collect::<Vec<_>>(),
         ))
     }
