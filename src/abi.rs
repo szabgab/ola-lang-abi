@@ -36,27 +36,28 @@ impl Abi {
             .find(|f| f.method_id() == input[input.len()-1])
             .ok_or_else(|| anyhow!("ABI function not found"))?;
 
-        // input = [param1, param2, .. , param-len, method_id,]
+        // input = [param1, param2, .. , param-len, method_id]
 
         let decoded_params = f.decode_input_from_slice(&input[0..input.len()-2])?;
 
         Ok((f, decoded_params))
     }
 
-    // Decode function input from slice.
+    // Decode function ouput from slice.
     pub fn decode_output_from_slice<'a>(
         &'a self,
+        signature: &str,
         output: &[u64],
     ) -> Result<(&'a Function, DecodedParams)> {
         let f = self
             .functions
             .iter()
-            .find(|f| f.method_id() == output[output.len()-1])
+            .find(|f| f.signature() == signature)
             .ok_or_else(|| anyhow!("ABI function not found"))?;
 
-        // output = [param1, param2, .. , param-len, method_id,]
+        // output = [param1, param2, .. , param-len]
 
-        let decoded_params = f.decode_input_from_slice(&output[0..output.len()-2])?;
+        let decoded_params = f.decode_output_from_slice(&output[0..output.len()-1])?;
 
         Ok((f, decoded_params))
     }
