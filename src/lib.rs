@@ -63,6 +63,48 @@ pub fn decode_input_from_js(file_content: &[u8], data: &[u64]) -> Result<JsValue
     decode_abi_wrapper(file_content, data)
 }
 
+#[wasm_bindgen]
+pub fn decode_output_wrapper(file_content: &[u8], signature: &str, data: &[u64]) -> Result<JsValue, JsValue> {
+    let abi: Abi = serde_json::from_slice(file_content)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse decode output ABI: {:?}", e)))?;
+    let decoded_data = abi
+        .decode_output_from_slice(signature, data)
+        .map_err(|e| JsValue::from_str(&format!("Error decoding input: {:?}", e)))?;
+
+    log(&JsValue::from_str(&format!(
+        "Decoded function name from js: {:#?}",
+        decoded_data.0
+    )));
+    log(&JsValue::from_str(&format!(
+        "Decoded function data from js: {:#?}",
+        decoded_data.1
+    )));
+
+    let func_result_jsvalue = serde_wasm_bindgen::to_value(&decoded_data).map_err(|e| {
+        JsValue::from_str(&format!(
+            "Error converting decode output result to JsValue: {:?}",
+            e
+        ))
+    })?;
+
+    Ok(func_result_jsvalue)
+}
+
+#[wasm_bindgen]
+pub fn decode_output_from_js(file_content: &[u8], signature: &str, data: &[u64]) -> Result<JsValue, JsValue> {
+    log(&JsValue::from_str(&format!(
+        "Received signature {}, data length of encode input from js: {}",
+        signature, data.len()
+    )));
+    for (i, &value) in data.iter().enumerate() {
+        log(&JsValue::from_str(&format!(
+            "Received data element of encode input from js at index {}: {}",
+            i, value
+        )));
+    }
+    decode_output_wrapper(file_content, signature, data)
+}
+
 use serde_wasm_bindgen;
 pub fn encode_abi_wrapper(
     file_content: &[u8],

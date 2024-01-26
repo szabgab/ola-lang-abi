@@ -9,9 +9,9 @@
 
     <input type="file" id="fileInput" />
 
-    <script src="./pkg/ola_lang_abi_bg.wasm?v=1.0"></script>
+    <script src="./web/ola_lang_abi_bg.wasm?v=1.0"></script>
     <script type="module">
-        import init, {encode_input_from_js} from './pkg/ola_lang_abi.js';
+        import init, {encode_input_from_js} from './web/ola_lang_abi.js';
         import * as wasm from './pkg/ola_lang_abi.js';
         document.getElementById('fileInput').addEventListener('change', handleFileSelect);
 

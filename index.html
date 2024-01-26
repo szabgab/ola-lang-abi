@@ -9,12 +9,12 @@
 
     <input type="file" id="fileInput" />
 
-    <script src="./pkg/ola_lang_abi_bg.wasm?v=1.0"></script>
+    <script src="./web/ola_lang_abi_bg.wasm?v=1.0"></script>
     <script type="module">
-        import init, { decode_input_from_js } from './pkg/ola_lang_abi.js';
-        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+        import init, { decode_input_from_js, decode_output_from_js } from './web/ola_lang_abi.js';
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect2);
 
-        async function handleFileSelect(event) {
+        /*async function handleFileSelect(event) {
             await init();
             console.log('Decode input');
             const fileInput = event.target;
@@ -34,6 +34,33 @@
                     const jsonData = JSON.parse(jsonString);
                     let res = decode_input_from_js(jsonData, dataArray);
                     console.log('Decode data result:', res);
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }*/
+
+        async function handleFileSelect2(event) {
+            await init();
+            console.log('Decode output');
+            const fileInput = event.target;
+    
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const fileContent = new Uint8Array(e.target.result);
+                    console.log('Decode file content:', fileContent);
+                    const jsonString = JSON.stringify([...fileContent]);
+                    console.log('Decode JSON string:', jsonString);
+
+                    const data = new BigUint64Array([5n, 104n, 101n, 108n, 108n, 111n, 6n]);
+                    const dataArray = Array.from(data);
+                    console.log('Decode output data:', dataArray);
+
+                    const jsonData = JSON.parse(jsonString);
+                    const sig = 'getBookName((u32,string))'
+                    let res = decode_output_from_js(jsonData, sig, dataArray);
+                    console.log('Decode output data result:', res);
                 };
                 reader.readAsArrayBuffer(file);
             }

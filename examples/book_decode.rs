@@ -15,13 +15,15 @@ fn main() {
     // Decode input 
     let (func, decoded_data) = abi.decode_input_from_slice(&input_data).unwrap();
 
-    println!("decode function input {:?}\n data {:?}", func.name, decoded_data);
+    println!("decode function input:\n{:?}\ndata:\n{:#?}", func.name, decoded_data);
 
     // Decode output "hello"
     let output_data = vec![5, 104, 101, 108, 108, 111, 6];
+    let signature_data = abi.functions[1].signature();
 
-    let decoded_data = abi.decode_output_from_slice(abi.functions[1].signature().as_str(), &output_data).unwrap();
+    let decoded_data = abi.decode_output_from_slice(signature_data.as_str(), &output_data).unwrap();
+    println!("signature: {:?}",signature_data.as_str());
 
-    println!("decode function output {:?}\n", decoded_data);
+    println!("decode function output:\n{:#?}\n", decoded_data);
     
 }
