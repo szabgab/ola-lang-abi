@@ -1,13 +1,17 @@
 {
-  "name": "ola-lang-abi",
-  "version": "1.0.0",
+  "name": "@sin7y/ola-abi-wasm",
+  "version": "0.0.2",
   "description": "encode and decode input data for ola contract",
-  "main": "index.js",
-  "directories": {
-    "example": "examples"
-  },
+  "browser": "ola-lang-abi-web.js",
+  "main": "dist/ola-lang-abi-node.js",
+  "files": [
+    "dist/*.ts",
+    "dist/*.wasm",
+    "dist/*.js"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "release": "npm publish --access public"
   },
   "repository": {
     "type": "git",
@@ -17,8 +21,8 @@
     "ola-lang",
     "abi"
   ],
-  "author": "yp945 bchyl",
-  "license": "MIT",
+  "author": "olavm-k yp945 bchyl",
+  "license": "ISC",
   "bugs": {
     "url": "https://github.com/Sin7Y/ola-lang-abi/issues"
   },
