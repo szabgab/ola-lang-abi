@@ -30,6 +30,6 @@ export function decode_output_from_js(file_content: Uint8Array, signature: strin
 * @param {Uint8Array} file_content
 * @param {string} signature
 * @param {any} params
-* @returns {any}
+* @returns {any[]}
 */
-export function encode_input_from_js(file_content: Uint8Array, signature: string, params: any): any;
+export function encode_input_from_js(file_content: Uint8Array, signature: string, params: any): any[];

@@ -25,9 +25,9 @@
                 const reader = new FileReader();
                 reader.onload = function (e) {
                 const fileContent = new Uint8Array(e.target.result);
-                console.log('Encode file content:', fileContent);
+                // console.log('Encode file content:', fileContent);
                 const jsonString = JSON.stringify([...fileContent]);
-                console.log('Encode JSON string:', jsonString);
+                // console.log('Encode JSON string:', jsonString);
 
                 const sig = 'createBook(u32,string)';
                 const jsonData = JSON.parse(jsonString);

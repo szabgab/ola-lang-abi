@@ -49,13 +49,13 @@
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     const fileContent = new Uint8Array(e.target.result);
-                    console.log('Decode file content:', fileContent);
+                    // console.log('Decode file content:', fileContent);
                     const jsonString = JSON.stringify([...fileContent]);
-                    console.log('Decode JSON string:', jsonString);
+                    // console.log('Decode JSON string:', jsonString);
 
                     const data = new BigUint64Array([5n, 104n, 101n, 108n, 108n, 111n, 6n]);
                     const dataArray = Array.from(data);
-                    console.log('Decode output data:', dataArray);
+                    // console.log('Decode output data:', dataArray);
 
                     const jsonData = JSON.parse(jsonString);
                     const sig = 'getBookName((u32,string))'

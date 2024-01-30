@@ -29,15 +29,6 @@ pub fn decode_abi_wrapper(file_content: &[u8], data: &[u64]) -> Result<JsValue, 
         .decode_input_from_slice(data)
         .map_err(|e| JsValue::from_str(&format!("Error decoding input: {:?}", e)))?;
 
-    log(&JsValue::from_str(&format!(
-        "Decoded function name from js: {:#?}",
-        decoded_data.0
-    )));
-    log(&JsValue::from_str(&format!(
-        "Decoded function data from js: {:#?}",
-        decoded_data.1
-    )));
-
     let func_result_jsvalue = serde_wasm_bindgen::to_value(&decoded_data).map_err(|e| {
         JsValue::from_str(&format!(
             "Error converting decode result to JsValue: {:?}",
@@ -50,16 +41,6 @@ pub fn decode_abi_wrapper(file_content: &[u8], data: &[u64]) -> Result<JsValue, 
 
 #[wasm_bindgen]
 pub fn decode_input_from_js(file_content: &[u8], data: &[u64]) -> Result<JsValue, JsValue> {
-    log(&JsValue::from_str(&format!(
-        "Received data length of encode input from js: {}",
-        data.len()
-    )));
-    for (i, &value) in data.iter().enumerate() {
-        log(&JsValue::from_str(&format!(
-            "Received data element of encode input from js at index {}: {}",
-            i, value
-        )));
-    }
     decode_abi_wrapper(file_content, data)
 }
 
@@ -70,15 +51,6 @@ pub fn decode_output_wrapper(file_content: &[u8], signature: &str, data: &[u64])
     let decoded_data = abi
         .decode_output_from_slice(signature, data)
         .map_err(|e| JsValue::from_str(&format!("Error decoding input: {:?}", e)))?;
-
-    log(&JsValue::from_str(&format!(
-        "Decoded function name from js: {:#?}",
-        decoded_data.0
-    )));
-    log(&JsValue::from_str(&format!(
-        "Decoded function data from js: {:#?}",
-        decoded_data.1
-    )));
 
     let func_result_jsvalue = serde_wasm_bindgen::to_value(&decoded_data).map_err(|e| {
         JsValue::from_str(&format!(
@@ -92,16 +64,6 @@ pub fn decode_output_wrapper(file_content: &[u8], signature: &str, data: &[u64])
 
 #[wasm_bindgen]
 pub fn decode_output_from_js(file_content: &[u8], signature: &str, data: &[u64]) -> Result<JsValue, JsValue> {
-    log(&JsValue::from_str(&format!(
-        "Received signature {}, data length of encode input from js: {}",
-        signature, data.len()
-    )));
-    for (i, &value) in data.iter().enumerate() {
-        log(&JsValue::from_str(&format!(
-            "Received data element of encode input from js at index {}: {}",
-            i, value
-        )));
-    }
     decode_output_wrapper(file_content, signature, data)
 }
 
@@ -110,27 +72,23 @@ pub fn encode_abi_wrapper(
     file_content: &[u8],
     signature: &str,
     value: &[Value],
-) -> Result<JsValue, JsValue> {
+) -> Result<Vec<JsValue>, JsValue> {
     let abi: Abi = serde_json::from_slice(file_content)
         .map_err(|e| JsValue::from_str(&format!("Failed to parse encode ABI: {:?}", e)))?;
 
-    let input = abi
+    let result = abi
         .encode_input_with_signature(signature, &value)
         .map_err(|e| JsValue::from_str(&format!("Error decoding input: {:?}", e)))?;
 
-    log(&JsValue::from_str(&format!(
-        "Encoded function data input from js: {:#?}",
-        input
-    )));
+    let mut result_js = Vec::with_capacity(result.len());
 
-    let result_jsvalue = serde_wasm_bindgen::to_value(&input).map_err(|e| {
-        JsValue::from_str(&format!(
-            "Error converting encode result to JsValue: {:?}",
-            e
-        ))
-    })?;
+    for value in result.iter() {
+        let bigint_value: u64 = *value;
+        let bigint_string = format!("{}", bigint_value);
+        result_js.push(JsValue::from_str(&bigint_string));
+    }
 
-    Ok(result_jsvalue)
+    Ok(result_js)
 }
 
 #[wasm_bindgen]
@@ -138,11 +96,7 @@ pub fn encode_input_from_js(
     file_content: &[u8],
     signature: &str,
     params: JsValue,
-) -> Result<JsValue, JsValue> {
-    log(&JsValue::from_str(&format!(
-        "Received signature of encode input from js: {}",
-        signature
-    )));
+) -> Result<Vec<JsValue>, JsValue> {
 
     let params: Vec<Value> = serde_wasm_bindgen::from_value(params)?;
 
