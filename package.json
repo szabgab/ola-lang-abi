@@ -1,8 +1,8 @@
 {
   "name": "@sin7y/ola-abi-wasm",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "encode and decode input data for ola contract",
-  "browser": "ola-lang-abi-web.js",
+  "browser": "dist/ola-lang-abi-web.js",
   "main": "dist/ola-lang-abi-node.js",
   "files": [
     "dist/*.ts",

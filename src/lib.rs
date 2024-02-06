@@ -14,6 +14,19 @@ use wasm_bindgen::prelude::*;
 
 //use abi::Abi;
 use wasm_bindgen::JsValue;
+use serde::Serialize;
+use serde_wasm_bindgen::Serializer;
+use wasm_bindgen::JsError;
+
+static DEFAULT_SERIALIZER: Serializer = Serializer::new()
+    .serialize_large_number_types_as_bigints(true)
+    .serialize_missing_as_null(true);
+
+pub(crate) fn serde_serialize<T: Serialize>(value: T) -> Result<JsValue, JsValue> {
+    value
+        .serialize(&DEFAULT_SERIALIZER)
+        .map_err(|err| JsValue::from(JsError::from(err)))
+}
 
 #[wasm_bindgen]
 extern "C" {
@@ -29,7 +42,7 @@ pub fn decode_abi_wrapper(file_content: &[u8], data: &[u64]) -> Result<JsValue, 
         .decode_input_from_slice(data)
         .map_err(|e| JsValue::from_str(&format!("Error decoding input: {:?}", e)))?;
 
-    let func_result_jsvalue = serde_wasm_bindgen::to_value(&decoded_data).map_err(|e| {
+    let func_result_jsvalue = serde_serialize(&decoded_data).map_err(|e| {
         JsValue::from_str(&format!(
             "Error converting decode result to JsValue: {:?}",
             e
@@ -52,7 +65,7 @@ pub fn decode_output_wrapper(file_content: &[u8], signature: &str, data: &[u64])
         .decode_output_from_slice(signature, data)
         .map_err(|e| JsValue::from_str(&format!("Error decoding input: {:?}", e)))?;
 
-    let func_result_jsvalue = serde_wasm_bindgen::to_value(&decoded_data).map_err(|e| {
+    let func_result_jsvalue = serde_serialize(&decoded_data).map_err(|e| {
         JsValue::from_str(&format!(
             "Error converting decode output result to JsValue: {:?}",
             e
