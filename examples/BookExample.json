@@ -5,30 +5,29 @@
     "inputs": [
       {
         "name": "id",
-        "type": "u32",
-        "internalType": "u32"
+        "type": "u32"
       },
       {
         "name": "name",
-        "type": "string",
-        "internalType": "string"
+        "type": "string"
       }
     ],
     "outputs": [
       {
         "name": "",
         "type": "tuple",
-        "internalType": "struct BookExample.Book",
         "components": [
           {
             "name": "book_id",
-            "type": "u32",
-            "internalType": "u32"
+            "type": "u32"
           },
           {
             "name": "book_name",
-            "type": "string",
-            "internalType": "string"
+            "type": "string"
+          },
+          {
+            "name": "author",
+            "type": "string"
           }
         ]
       }
@@ -41,17 +40,18 @@
       {
         "name": "_book",
         "type": "tuple",
-        "internalType": "struct BookExample.Book",
         "components": [
           {
             "name": "book_id",
-            "type": "u32",
-            "internalType": "u32"
+            "type": "u32"
           },
           {
             "name": "book_name",
-            "type": "string",
-            "internalType": "string"
+            "type": "string"
+          },
+          {
+            "name": "author",
+            "type": "string"
           }
         ]
       }
@@ -59,8 +59,7 @@
     "outputs": [
       {
         "name": "",
-        "type": "string",
-        "internalType": "string"
+        "type": "string"
       }
     ]
   },
@@ -71,17 +70,18 @@
       {
         "name": "_book",
         "type": "tuple",
-        "internalType": "struct BookExample.Book",
         "components": [
           {
             "name": "book_id",
-            "type": "u32",
-            "internalType": "u32"
+            "type": "u32"
           },
           {
             "name": "book_name",
-            "type": "string",
-            "internalType": "string"
+            "type": "string"
+          },
+          {
+            "name": "author",
+            "type": "string"
           }
         ]
       }
@@ -89,9 +89,29 @@
     "outputs": [
       {
         "name": "",
-        "type": "u32",
-        "internalType": "u32"
+        "type": "u32"
       }
     ]
+  },
+  {
+    "name": "BookCreated",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "u32",
+        "indexed": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "indexed": true
+      },
+      {
+        "name": "author",
+        "type": "string"
+      }
+    ],
+    "anonymous": false
   }
 ]

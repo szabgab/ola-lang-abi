@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use serde::{de::Visitor, Deserialize, Serialize};
 
-use crate::{params::Param, DecodedParams, Value};
+use crate::{params::Param, DecodedParams, Event, FixedArray4, Value};
 
 /// Contract ABI (Abstract Binary Interface).
 ///
@@ -22,6 +22,8 @@ use crate::{params::Param, DecodedParams, Value};
 pub struct Abi {
     /// Contract defined functions.
     pub functions: Vec<Function>,
+
+    pub events: Vec<Event>,
 }
 
 impl Abi {
@@ -60,6 +62,27 @@ impl Abi {
         let decoded_params = f.decode_output_from_slice(&output[0..output.len() - 1])?;
 
         Ok((f, decoded_params))
+    }
+
+    /// Decode event data from slice.
+    pub fn decode_log_from_slice<'a>(
+        &'a self,
+        topics: &[FixedArray4],
+        data: &[u64],
+    ) -> Result<(&'a Event, DecodedParams)> {
+        if topics.is_empty() {
+            return Err(anyhow!("missing event topic id"));
+        }
+
+        let e = self
+            .events
+            .iter()
+            .find(|e| e.topic() == topics[0])
+            .ok_or_else(|| anyhow!("ABI event not found"))?;
+
+        let decoded_params = e.decode_data_from_slice(topics, data)?;
+
+        Ok((e, decoded_params))
     }
 
     pub fn encode_input_with_signature(
@@ -101,6 +124,17 @@ impl Serialize for Abi {
                 name: Some(f.name.clone()),
                 inputs: Some(f.inputs.clone()),
                 outputs: Some(f.outputs.clone()),
+                anonymous: None,
+            });
+        }
+
+        for e in &self.events {
+            entries.push(AbiEntry {
+                type_: String::from("event"),
+                name: Some(e.name.clone()),
+                inputs: Some(e.inputs.clone()),
+                outputs: None,
+                anonymous: Some(e.anonymous),
             });
         }
         entries.serialize(serializer)
@@ -198,6 +232,8 @@ struct AbiEntry {
     inputs: Option<Vec<Param>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     outputs: Option<Vec<Param>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    anonymous: Option<bool>,
 }
 
 struct AbiVisitor;
@@ -213,7 +249,10 @@ impl<'de> Visitor<'de> for AbiVisitor {
     where
         A: serde::de::SeqAccess<'de>,
     {
-        let mut abi = Abi { functions: vec![] };
+        let mut abi = Abi {
+            functions: vec![],
+            events: vec![],
+        };
 
         loop {
             let entry = seq.next_element::<AbiEntry>()?;
@@ -235,6 +274,23 @@ impl<'de> Visitor<'de> for AbiVisitor {
                             name,
                             inputs,
                             outputs,
+                        });
+                    }
+                    "event" => {
+                        let inputs = entry.inputs.unwrap_or_default();
+
+                        let name = entry.name.ok_or_else(|| {
+                            serde::de::Error::custom("missing function name".to_string())
+                        })?;
+
+                        let anonymous = entry.anonymous.ok_or_else(|| {
+                            serde::de::Error::custom("missing event anonymous field".to_string())
+                        })?;
+
+                        abi.events.push(Event {
+                            name,
+                            inputs,
+                            anonymous,
                         });
                     }
 
@@ -334,10 +390,12 @@ mod test {
                 Param {
                     name: "".to_string(),
                     type_: Type::Address,
+                    indexed: None,
                 },
                 Param {
                     name: "x".to_string(),
                     type_: Type::FixedArray(Box::new(Type::U32), 2),
+                    indexed: None,
                 },
             ],
             outputs: vec![],
@@ -370,6 +428,7 @@ mod test {
         let fun = test_function();
         let abi = Abi {
             functions: vec![fun],
+            events: vec![],
         };
 
         let mut params = Value::encode(&input_values);
@@ -436,6 +495,7 @@ mod test {
                         Param {
                             name: "n".to_string(),
                             type_: Type::U32,
+                            indexed: None,
                         },
                         Param {
                             name: "x".to_string(),
@@ -443,10 +503,12 @@ mod test {
                                 ("a".to_string(), Type::U32),
                                 ("b".to_string(), Type::String)
                             ]),
+                            indexed: None,
                         }
                     ],
                     outputs: vec![],
                 }],
+                events: vec![],
             }
         );
     }

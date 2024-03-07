@@ -9,8 +9,9 @@ pub struct FixedArray4(pub [u64; 4]);
 impl From<&str> for FixedArray4 {
     fn from(s: &str) -> Self {
         let cleaned = s.trim_start_matches("0x");
+        let padded = format!("{:0>64}", cleaned);
         let mut result = [0; 4];
-        for (i, chunk) in cleaned.as_bytes().rchunks(16).rev().enumerate() {
+        for (i, chunk) in padded.as_bytes().rchunks(16).rev().enumerate() {
             let chunk_str = std::str::from_utf8(chunk).expect("Invalid UTF-8");
             result[i] =
                 u64::from_str_radix(chunk_str, 16).expect("Failed to parse hex string") as u64;
@@ -40,11 +41,51 @@ impl fmt::Display for FixedArray4 {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FixedArray8(pub [u64; 8]);
+
+impl From<&str> for FixedArray8 {
+    fn from(s: &str) -> Self {
+        let cleaned = s.trim_start_matches("0x");
+        let padded = format!("{:0>64}", cleaned);
+        let mut result = [0; 8];
+        for (i, chunk) in padded.as_bytes().rchunks(8).rev().enumerate() {
+            let chunk_str = std::str::from_utf8(chunk).expect("Invalid UTF-8");
+            result[i] =
+                u64::from_str_radix(chunk_str, 16).expect("Failed to parse hex string") as u64;
+        }
+        FixedArray8(result)
+    }
+}
+
+impl FixedArray8 {
+    pub fn to_hex_string(&self) -> String {
+        let mut hex_string = String::with_capacity(66); // 64 for data + 2 for "0x" prefix
+        hex_string.push_str("0x");
+        for &value in self.0.iter() {
+            hex_string.push_str(&format!("{:08x}", value as u32));
+        }
+        hex_string
+    }
+}
+
+impl fmt::Display for FixedArray8 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "0x")?;
+        for &value in self.0.iter() {
+            write!(f, "{:08x}", value as u32)?;
+        }
+        Ok(())
+    }
+}
+
 /// ABI decoded value.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Value {
-    /// Unsigned int value (uint<M>).
+    /// Unsigned int value (uint32).
     U32(u64),
+    /// Unsigned int value (uint256).
+    U256(FixedArray8),
     /// Signed int value (int<M>).
     Field(u64),
     /// Address value (address).
@@ -89,6 +130,14 @@ impl Value {
                 Value::U32(i) => {
                     let start = buf.len();
                     buf.resize(start + 1, *i);
+                }
+
+                Value::U256(num) => {
+                    let start = buf.len();
+                    buf.resize(start + 8, 0);
+
+                    // big-endian, as if it were a uint160.
+                    buf[start..(start + 8)].copy_from_slice(&num.0);
                 }
 
                 Value::Field(i) => {
@@ -180,6 +229,7 @@ impl Value {
     pub fn type_of(&self) -> Type {
         match self {
             Value::U32(_) => Type::U32,
+            Value::U256(_) => Type::U256,
             Value::Field(_) => Type::Field,
             Value::Address(_) => Type::Address,
             Value::Hash(_) => Type::Hash,
@@ -210,6 +260,18 @@ impl Value {
                 let u32_value = slice[0];
 
                 Ok((Value::U32(u32_value), 1))
+            }
+
+            Type::U256 => {
+                let at = base_addr + at;
+                let slice = bs
+                    .get(at..(at + 8))
+                    .ok_or_else(|| anyhow!("reached end of input while decoding {:?}", ty))?;
+
+                let mut u256_value = [0u64; 8];
+                u256_value.copy_from_slice(slice);
+
+                Ok((Value::U256(FixedArray8(u256_value)), 8))
             }
 
             Type::Field => {
@@ -354,6 +416,21 @@ mod test {
     }
 
     #[test]
+    fn decode_u256() {
+        let bs = FixedArray8::from("0x0a");
+
+        let v = Value::decode_from_slice(&bs.0, &[Type::U256]).expect("decode_from_slice failed");
+
+        assert_eq!(v, vec![Value::U256(FixedArray8([0, 0, 0, 0, 0, 0, 0, 10]))]);
+        let bs =
+            FixedArray8::from("0x000000010000000200000003000000040000000500000006000000070000000a");
+
+        let v = Value::decode_from_slice(&bs.0, &[Type::U256]).expect("decode_from_slice failed");
+
+        assert_eq!(v, vec![Value::U256(FixedArray8([1, 2, 3, 4, 5, 6, 7, 10]))]);
+    }
+
+    #[test]
     fn decode_field() {
         let bs = vec![100, 200, 300];
 
@@ -367,6 +444,12 @@ mod test {
     }
     #[test]
     fn decode_address() {
+        let bs = FixedArray4::from("0x000000020000000000000003");
+
+        let v =
+            Value::decode_from_slice(&bs.0, &[Type::Address]).expect("decode_from_slice failed");
+
+        assert_eq!(v, vec![Value::Address(FixedArray4([0, 0, 2, 3]))]);
         let bs =
             FixedArray4::from("0x0000000000000000000000000000000100000000000000020000000000000003");
 
@@ -605,7 +688,7 @@ mod test {
     }
 
     #[test]
-    fn encode_uint() {
+    fn encode_u32() {
         let value = Value::U32(12);
 
         let expected_bytes = vec![12];
@@ -614,13 +697,26 @@ mod test {
     }
 
     #[test]
+    fn encode_u256() {
+        let u256 = [1, 2, 3, 4, 5, 6, 7, 8];
+        let value = Value::U256(FixedArray8(u256));
+
+        let expected_bytes = vec![1, 2, 3, 4, 5, 6, 7, 8];
+        assert_eq!(Value::encode(&[value]), expected_bytes);
+        let expected_hex = "0x0000000100000002000000030000000400000005000000060000000700000008";
+        assert_eq!(FixedArray8(u256).to_hex_string(), expected_hex);
+    }
+
+    #[test]
     fn encode_address() {
         let addr = [1, 2, 3, 4];
         let value = Value::Address(FixedArray4(addr));
 
         let expected_bytes = vec![1, 2, 3, 4];
-
         assert_eq!(Value::encode(&[value]), expected_bytes);
+
+        let expected_hex = "0x0000000000000001000000000000000200000000000000030000000000000004";
+        assert_eq!(FixedArray4(addr).to_hex_string(), expected_hex);
     }
 
     #[test]

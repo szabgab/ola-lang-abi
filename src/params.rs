@@ -76,6 +76,8 @@ pub struct Param {
     pub name: String,
     /// Parameter type.
     pub type_: Type,
+    /// Whether it is an indexed parameter (events only).
+    pub indexed: Option<bool>,
 }
 
 impl Param {
@@ -99,6 +101,7 @@ impl Param {
                     Param {
                         name: name.clone(),
                         type_: ty.clone(),
+                        indexed: None,
                     }
                     .build_param_entry()
                 })
@@ -108,6 +111,7 @@ impl Param {
         ParamEntry {
             name: self.name.clone(),
             type_: param_type_string(&self.type_),
+            indexed: self.indexed,
             components,
         }
     }
@@ -135,6 +139,7 @@ impl<'a> Deserialize<'a> for Param {
         Ok(Param {
             name: entry.name.to_string(),
             type_: ty,
+            indexed: entry.indexed,
         })
     }
 }
@@ -154,6 +159,8 @@ struct ParamEntry {
     #[serde(rename = "type")]
     pub type_: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub indexed: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub components: Option<Vec<ParamEntry>>,
 }
 
@@ -161,7 +168,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{char, digit1},
-    combinator::{all_consuming, map_res, opt, recognize, verify},
+    combinator::{all_consuming, map_res, opt, recognize},
     multi::many1,
     sequence::delimited,
     IResult,
@@ -220,7 +227,8 @@ fn parse_simple_type(
         alt((
             parse_tuple(components.clone()),
             parse_fields,
-            parse_uint,
+            parse_u32,
+            parse_u256,
             parse_field,
             parse_address,
             parse_hash,
@@ -230,8 +238,12 @@ fn parse_simple_type(
     }
 }
 
-fn parse_uint(input: &str) -> TypeParseResult<&str, Type> {
-    map_error(verify(parse_sized("u"), check_int_size)(input).map(|(i, _)| (i, Type::U32)))
+fn parse_u32(input: &str) -> TypeParseResult<&str, Type> {
+    map_error(tag("u32")(input).map(|(i, _)| (i, Type::U32)))
+}
+
+fn parse_u256(input: &str) -> TypeParseResult<&str, Type> {
+    map_error(tag("u256")(input).map(|(i, _)| (i, Type::U256)))
 }
 
 fn parse_field(input: &str) -> TypeParseResult<&str, Type> {
@@ -310,22 +322,8 @@ fn parse_tuple(
     }
 }
 
-fn parse_sized(t: &str) -> impl Fn(&str) -> IResult<&str, u64> + '_ {
-    move |input: &str| {
-        let (i, _) = tag(t)(input)?;
-
-        parse_integer(i)
-    }
-}
-
 fn parse_integer(input: &str) -> IResult<&str, u64> {
     map_res(recognize(many1(digit1)), str::parse)(input)
-}
-
-fn check_int_size(i: &u64) -> bool {
-    let i = *i;
-
-    i > 0 && i <= 256 && i % 8 == 0
 }
 
 #[cfg(test)]
@@ -349,6 +347,30 @@ mod test {
             Param {
                 name: "a".to_string(),
                 type_: Type::U32,
+                indexed: None
+            }
+        );
+
+        let param_json = serde_json::to_value(param).expect("param serialized");
+
+        assert_eq!(v, param_json);
+    }
+
+    #[test]
+    fn serde_u256() {
+        let v = json!({
+            "name": "a",
+            "type": "u256",
+        });
+
+        let param: Param = serde_json::from_value(v.clone()).expect("param deserialized");
+
+        assert_eq!(
+            param,
+            Param {
+                name: "a".to_string(),
+                type_: Type::U256,
+                indexed: None
             }
         );
 
@@ -371,6 +393,7 @@ mod test {
             Param {
                 name: "a".to_string(),
                 type_: Type::Field,
+                indexed: None
             }
         );
 
@@ -393,6 +416,7 @@ mod test {
             Param {
                 name: "a".to_string(),
                 type_: Type::Address,
+                indexed: None
             }
         );
 
@@ -415,6 +439,7 @@ mod test {
             Param {
                 name: "a".to_string(),
                 type_: Type::Bool,
+                indexed: None
             }
         );
 
@@ -437,6 +462,7 @@ mod test {
             Param {
                 name: "a".to_string(),
                 type_: Type::String,
+                indexed: None
             }
         );
 
@@ -459,6 +485,7 @@ mod test {
             Param {
                 name: "a".to_string(),
                 type_: Type::Fields,
+                indexed: None
             }
         );
 
@@ -480,6 +507,7 @@ mod test {
             Param {
                 name: "a".to_string(),
                 type_: Type::Array(Box::new(Type::U32)),
+                indexed: None
             }
         );
 
@@ -501,6 +529,7 @@ mod test {
             Param {
                 name: "a".to_string(),
                 type_: Type::Array(Box::new(Type::Array(Box::new(Type::Address)))),
+                indexed: None
             }
         );
 
@@ -522,6 +551,7 @@ mod test {
             Param {
                 name: "a".to_string(),
                 type_: Type::Array(Box::new(Type::FixedArray(Box::new(Type::String), 2))),
+                indexed: None
             }
         );
 
@@ -541,6 +571,7 @@ mod test {
             Param {
                 name: "a".to_string(),
                 type_: Type::FixedArray(Box::new(Type::Array(Box::new(Type::String))), 3),
+                indexed: None
             }
         );
 
@@ -597,6 +628,7 @@ mod test {
                         ])))
                     )
                 ]),
+                indexed: None
             }
         );
 

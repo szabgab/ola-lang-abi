@@ -1,8 +1,10 @@
 /// Available ABI types.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
-    /// Unsigned int type (uint<M>).
+    /// Unsigned int type uint32.
     U32,
+    /// Unsigned int type uint256.
+    U256,
     /// Field
     Field,
     /// Hash type (address).
@@ -28,6 +30,7 @@ impl Type {
     pub fn is_dynamic(&self) -> bool {
         match self {
             Type::U32 => false,
+            Type::U256 => false,
             Type::Field => false,
             Type::Address => false,
             Type::Hash => false,
@@ -45,6 +48,7 @@ impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Type::U32 => write!(f, "u32"),
+            Type::U256 => write!(f, "u256"),
             Type::Field => write!(f, "field"),
             Type::Hash => write!(f, "hash"),
             Type::Address => write!(f, "address"),
